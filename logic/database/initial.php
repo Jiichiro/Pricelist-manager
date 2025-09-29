@@ -1,6 +1,6 @@
 <?php
 
-include_once($_SERVER['DOCUMENT_ROOT'] . '/prielist-manager/config.php');
+require_once __DIR__ . "../../../config.php";
 
 // Create database if not exists
 $sql = "CREATE DATABASE IF NOT EXISTS " . DB_NAME;
