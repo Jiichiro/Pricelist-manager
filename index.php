@@ -1,15 +1,16 @@
 <?php 
+session_start();
 
-$param = $_GET["page"] ?? "login";
+$sesi = $_SESSION['role'] ?? 'login';
 
-switch ($param) {
+switch ($sesi) {
     case "login":
         include "pages/login.php";
         break;
-    case "admin":
+    case "super_admin":
         include "pages/admin.php";
         break;
-    case "seller":
+    case "penjualan":
         include "pages/seller.php";
         break;
     default:
