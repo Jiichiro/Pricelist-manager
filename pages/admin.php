@@ -4,6 +4,7 @@
         background-color: #f4f6f9;
         margin: 0;
         padding: 0;
+        color: #2c3e50;
     }
 
     .dashboard-container {
@@ -24,7 +25,7 @@
     }
 
     .sidebar h2 {
-        font-size: 20px;
+        font-size: 22px;
         margin-bottom: 30px;
     }
 
@@ -48,6 +49,17 @@
         width: 100%;
     }
 
+    .main-content h1 {
+        font-size: 28px;
+        margin-bottom: 5px;
+    }
+
+    .main-content p {
+        margin-bottom: 20px;
+        color: #666;
+    }
+
+    /* Card */
     .card {
         background: #fff;
         border-radius: 8px;
@@ -60,9 +72,12 @@
         margin: 0 0 15px;
     }
 
+    /* Table */
     .price-table {
         width: 100%;
         border-collapse: collapse;
+        overflow: hidden;
+        border-radius: 8px;
     }
 
     .price-table th,
@@ -75,14 +90,25 @@
     .price-table th {
         background: #1abc9c;
         color: #fff;
+        font-weight: bold;
     }
 
+    .price-table tr:nth-child(even) {
+        background: #f9f9f9;
+    }
+
+    .price-table tr:hover {
+        background: #f1f7fd;
+    }
+
+    /* Buttons */
     .actions button {
         margin: 0 3px;
-        padding: 5px 10px;
+        padding: 6px 12px;
         border: none;
         border-radius: 4px;
         cursor: pointer;
+        font-size: 14px;
     }
 
     .actions .edit {
@@ -95,7 +121,7 @@
         color: #fff;
     }
 
-    /* Search bar */
+    /* Search & Add */
     .search-add {
         display: flex;
         justify-content: space-between;
@@ -104,7 +130,7 @@
 
     .search-add input {
         padding: 8px;
-        width: 200px;
+        width: 220px;
         border: 1px solid #ccc;
         border-radius: 4px;
     }
@@ -112,10 +138,11 @@
     .search-add button {
         background: #1abc9c;
         color: #fff;
-        padding: 8px 12px;
+        padding: 8px 14px;
         border: none;
         border-radius: 4px;
         cursor: pointer;
+        font-size: 14px;
     }
 
     /* Modal */
@@ -141,18 +168,19 @@
 
     .modal-content h4 {
         margin-top: 0;
+        margin-bottom: 10px;
     }
 
     .modal-content input {
         width: 100%;
         padding: 8px;
-        margin: 5px 0 10px;
+        margin: 6px 0 12px;
         border: 1px solid #ccc;
         border-radius: 4px;
     }
 
     .modal-content button {
-        padding: 8px 12px;
+        padding: 8px 14px;
         border: none;
         border-radius: 4px;
         cursor: pointer;
@@ -164,6 +192,7 @@
         cursor: pointer;
     }
 </style>
+
 
 <div class="dashboard-container">
     <!-- Sidebar -->

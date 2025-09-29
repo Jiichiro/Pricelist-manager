@@ -54,7 +54,7 @@
 
 <div class="login-container">
     <h1>Login Page</h1>
-    <form method="POST" action="./logic/auth/login.php">
+    <form method="POST" action="../logic/auth/login.php">
         <label for="username">Username</label>
         <input type="text" id="username" name="username" required>
 

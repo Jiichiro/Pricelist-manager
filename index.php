@@ -1,9 +1,9 @@
-<?php 
+<?php
 session_start();
 
 require_once __DIR__ . "../logic/database/initial.php";
 
-$sesi = $_SESSION['role'] ?? 'login';
+$sesi = $_GET['page'] ?? 'login';
 
 switch ($sesi) {
     case "login":
@@ -14,6 +14,9 @@ switch ($sesi) {
         break;
     case "penjualan":
         include "pages/seller.php";
+        break;
+    case "add-user":
+        include "pages/form.php";
         break;
     default:
         echo "<h1>404 Not Found</h1>";
