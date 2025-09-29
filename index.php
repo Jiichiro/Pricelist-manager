@@ -13,6 +13,9 @@
         }
     }
 ?>
+require_once __DIR__ . "../logic/database/initial.php";
+
+$sesi = $_SESSION['role'] ?? 'login';
 
 <!DOCTYPE html>
 <html lang="en">
