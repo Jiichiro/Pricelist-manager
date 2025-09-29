@@ -18,7 +18,7 @@ if ($stmt->num_rows > 0) {
         $_SESSION['user_id'] = $id;
         $_SESSION['username'] = $username;
         $_SESSION['role'] = $role;
-        header("Location: welcome.php");
+        header("Location: ../../index.php");
         exit();
     } else {
         echo "Invalid password.";

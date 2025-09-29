@@ -1,5 +1,3 @@
-<?php include("../components/header.php"); ?>
-
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -175,7 +173,7 @@
         <a href="#">Manage Price List</a>
         <a href="#">Users</a>
         <a href="#">Settings</a>
-        <a href="#">Logout</a>
+        <a href="./logic/auth/logout.php">Logout</a>
     </div>
 
     <!-- Main Content -->
@@ -309,5 +307,3 @@
         }
     }
 </script>
-
-<?php include("../components/footer.php"); ?>

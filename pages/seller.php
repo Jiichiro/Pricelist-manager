@@ -1,13 +1,11 @@
 <?php
-session_start();
-
 // Validasi login dan role
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'penjualan') {
     header("Location: ".__DIR__."../login.php");
     exit();
 }
 
-include("../components/header.php");
+require __DIR__."../../components/header.php"
 ?>
 
 <style>
@@ -186,4 +184,4 @@ function filterTable() {
 }
 </script>
 
-<?php include("../components/footer.php"); ?>
+<?php require __DIR__."../../components/footer.php" ?>
