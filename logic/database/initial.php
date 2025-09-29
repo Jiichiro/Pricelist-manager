@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . "../../../config.php";
+require_once __DIR__ . "../connect.php";
 
 // Create database if not exists
 $sql = "CREATE DATABASE IF NOT EXISTS " . DB_NAME;
@@ -9,7 +9,7 @@ if ($conn->query($sql) !== TRUE) {
 }
 
 // Select the database
-$conn->select_db($dbname);
+$conn->select_db(DB_NAME);
 
 // Create table if not exists
 if ($conn->query("CREATE TABLE IF NOT EXISTS users (
