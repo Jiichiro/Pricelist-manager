@@ -1,4 +1,14 @@
-<?php include("../components/header.php"); ?>
+<?php
+session_start();
+
+// Validasi login dan role
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'penjualan') {
+    header("Location: ".__DIR__."../login.php");
+    exit();
+}
+
+include("../components/header.php");
+?>
 
 <style>
     .dashboard-container {
@@ -107,7 +117,7 @@
         <br><b style="color:#e74c3c;">❌ Tidak tersedia fitur edit produk.</b>
     </p>
 
-    <!-- Filter kategori -->
+    
     <div class="filter-box">
         <label for="kategori" style="font-weight:bold; margin-right:8px;">Kategori:</label>
         <select id="kategori">
@@ -118,7 +128,7 @@
         <button onclick="filterTable()">Filter</button>
     </div>
 
-    <!-- Tabel katalog -->
+    
     <table id="productTable">
         <thead>
             <tr>
