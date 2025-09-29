@@ -1,6 +1,8 @@
 <?php 
 session_start();
 
+require_once __DIR__ . "../logic/database/initial.php";
+
 $sesi = $_SESSION['role'] ?? 'login';
 
 switch ($sesi) {
