@@ -1,10 +1,14 @@
-<?php include("../components/header.php"); ?>
-<h1>Login Page</h1>
-<form method="POST" action="../logic/auth/login.php"></form>
-    <label for="username">Username:</label>
-    <input type="text" id="username" name="username" required><br><br>
-    <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required><br><br>
-    <input type="submit" value="Login">
+<?php include __DIR__ . "/../components/header.php"; ?>
+
+<h2>Login Page</h2>
+<form method="post">
+    <label>Username:</label>
+    <input type="text" name="username"><br><br>
+
+    <label>Password:</label>
+    <input type="password" name="password"><br><br>
+
+    <button type="submit">Login</button>
 </form>
-<?php include("../components/footer.php"); ?>
+
+<?php include __DIR__ . "/../components/footer.php"; ?>
