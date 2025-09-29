@@ -3,7 +3,7 @@ require __DIR__ . "/../logic/database/connect.php";
 
 // ✅ Cek login
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: ./index.php");
     exit;
 }
 
@@ -190,10 +190,10 @@ $result = $conn->query("SELECT id, username, role FROM users");
         <!-- Sidebar -->
         <div class="sidebar">
             <h2>Admin Panel</h2>
-            <a href="#">Dashboard</a>
+            <a href="./">Dashboard</a>
             <a href="#tambah">Tambah User</a>
             <a href="#daftar">Daftar User</a>
-            <a href="logout.php">Logout</a>
+            <a href="./logic/auth/logout.php">Logout</a>
         </div>
 
         <!-- Main Content -->
@@ -216,8 +216,8 @@ $result = $conn->query("SELECT id, username, role FROM users");
 
                     <label>Role:</label>
                     <select name="role" required>
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
+                        <option value="penjualan">sales</option>
+                        <option value="super_admin">Admin</option>
                     </select>
 
                     <button type="submit">Tambah User</button>

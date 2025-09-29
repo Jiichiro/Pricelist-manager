@@ -198,9 +198,9 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <h2>Admin Panel</h2>
-        <a href="#">Dashboard</a>
+        <a href="./">Dashboard</a>
         <a href="#">Manage Price List</a>
-        <a href="#">Users</a>
+        <a href="?page=add-user">Users</a>
         <a href="#">Settings</a>
         <a href="./logic/auth/logout.php">Logout</a>
     </div>
