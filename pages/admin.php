@@ -1,8 +1,55 @@
+<?php
+require __DIR__ . "../../logic/database/connect.php";
+
+// --- Handle form submissions (Add or Edit) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $nama_produk = $_POST['nama_produk'];
+    $id_kategori = !empty($_POST['id_kategori']) ? intval($_POST['id_kategori']) : null;
+    $harga = floatval($_POST['harga']);
+    $stok = intval($_POST['stok']);
+    $deskripsi = $_POST['deskripsi'];
+    $gambar_url = $_POST['gambar_url'];
+    $editId = $_POST['editId'];
+
+    if (!empty($editId)) {
+        // Update existing produk
+        $stmt = $conn->prepare("UPDATE produk SET nama_produk=?, id_kategori=?, harga=?, stok=?, deskripsi=?, gambar_url=? WHERE id=?");
+        $stmt->bind_param("sidissi", $nama_produk, $id_kategori, $harga, $stok, $deskripsi, $gambar_url, $editId);
+    } else {
+        // Insert new produk
+        $stmt = $conn->prepare("INSERT INTO produk (nama_produk, id_kategori, harga, stok, deskripsi, gambar_url) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sidiss", $nama_produk, $id_kategori, $harga, $stok, $deskripsi, $gambar_url);
+    }
+
+    $stmt->execute();
+    $stmt->close();
+
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit();
+}
+
+// --- Handle delete request ---
+if (isset($_GET['delete'])) {
+    $deleteId = intval($_GET['delete']);
+    $stmt = $conn->prepare("DELETE FROM produk WHERE id = ?");
+    $stmt->bind_param("i", $deleteId);
+    $stmt->execute();
+    $stmt->close();
+
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit();
+}
+
+// --- Fetch all produk data ---
+$result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
+$produkData = $result->fetch_all(MYSQLI_ASSOC);
+?>
+
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <style>
         body {
@@ -244,6 +291,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="dashboard-container">
         <div class="sidebar">
@@ -270,92 +318,54 @@
                 <table class="price-table" id="priceTable">
                     <thead>
                         <tr>
-                            <th data-column="0">No</th>
-                            <th data-column="1">Item</th>
-                            <th data-column="2">Price</th>
+                            <th>No</th>
+                            <th>Item</th>
+                            <th>Price</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
-                        <!-- Data will be loaded from localStorage -->
+                        <?php foreach ($produkData as $index => $row): ?>
+                            <tr>
+                                <td><?= $index + 1 ?></td>
+                                <td><?= htmlspecialchars($row['nama_produk']) ?></td>
+                                <td>Rp <?php echo number_format($row['harga'], 0, ',', '.'); ?></td>
+                                <td class="actions">
+                                    <button class="edit" onclick="editItem(<?= $row['id'] ?>,'<?= addslashes($row['nama_produk']) ?>','<?= $row['harga'] ?>','<?= $row['stok'] ?>','<?= addslashes($row['deskripsi']) ?>','<?= addslashes($row['gambar_url']) ?>')">Edit</button>
+
+                                    <a href="?delete=<?= $row['id'] ?>" onclick="return confirm('Are you sure?')">
+                                        <button class="delete">Delete</button>
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- Modal for Add/Edit -->
     <div class="modal" id="itemModal">
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <h4 id="modalTitle">Add New Item</h4>
-            <input type="hidden" id="editIndex">
-            <input type="text" id="newItem" placeholder="Item name">
-            <input type="text" id="newPrice" placeholder="Price (e.g., 100k)">
-            <button style="background:#1abc9c; color:#fff;" onclick="saveItem()">Save</button>
+            <form method="POST">
+                <input type="hidden" id="editId" name="editId">
+                <input type="text" id="nama_produk" name="nama_produk" placeholder="Nama Produk" required>
+                <input type="number" step="0.01" id="harga" name="harga" placeholder="Harga (contoh: 100000)" required>
+                <input type="number" id="stok" name="stok" placeholder="Stok" required>
+                <input type="text" id="deskripsi" name="deskripsi" placeholder="Deskripsi">
+                <input type="text" id="gambar_url" name="gambar_url" placeholder="URL Gambar (opsional)">
+                <button style="background:#1abc9c; color:#fff;" type="submit">Save</button>
+            </form>
+
         </div>
     </div>
 
     <script>
-        let draggedElement = null;
-        let currentSort = { column: -1, direction: 'none' };
-        let priceData = [];
-
-        // Initialize data
-        function initData() {
-            const savedData = localStorage.getItem('priceListData');
-            
-            if (savedData) {
-                priceData = JSON.parse(savedData);
-            } else {
-                // Default data
-                priceData = [
-                    { id: 1, item: 'Property Of Allah', price: '100k', priceNum: 100 },
-                    { id: 2, item: 'ToteBag', price: '120k', priceNum: 120 },
-                    { id: 3, item: 'Jaket TNF', price: '180k', priceNum: 180 },
-                    { id: 4, item: 'Oxva Slim Go', price: '150k', priceNum: 150 },
-                    { id: 5, item: 'Hoodie Adidas', price: '200k', priceNum: 200 }
-                ];
-                saveToLocalStorage();
-            }
-            
-            renderTable();
-        }
-
-        // Save to localStorage
-        function saveToLocalStorage() {
-            localStorage.setItem('priceListData', JSON.stringify(priceData));
-        }
-
-        // Render table
-        function renderTable() {
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = '';
-            
-            priceData.forEach((data, index) => {
-                const row = tbody.insertRow();
-                row.draggable = true;
-                row.setAttribute('data-id', data.id);
-                
-                row.innerHTML = `
-                    <td><span class="drag-handle">☰</span>${index + 1}</td>
-                    <td>${data.item}</td>
-                    <td data-price="${data.priceNum}">${data.price}</td>
-                    <td class="actions">
-                        <button class="edit" onclick="editItem(${data.id})">Edit</button>
-                        <button class="delete" onclick="confirmDelete(${data.id})">Delete</button>
-                    </td>`;
-                
-                // Add drag and drop
-                row.addEventListener('dragstart', handleDragStart);
-                row.addEventListener('dragend', handleDragEnd);
-                row.addEventListener('dragover', handleDragOver);
-                row.addEventListener('drop', handleDrop);
-                row.addEventListener('dragleave', handleDragLeave);
-            });
-        }
-
-        // Search functionality
-        document.getElementById("searchInput").addEventListener("keyup", function () {
+        // Filter/Search
+        document.getElementById("searchInput").addEventListener("keyup", function() {
             let filter = this.value.toLowerCase();
             let rows = document.querySelectorAll("#tableBody tr");
             rows.forEach((row) => {
@@ -364,115 +374,11 @@
             });
         });
 
-        // Sorting functionality
-        document.querySelectorAll('.price-table th[data-column]').forEach(header => {
-            header.addEventListener('click', function() {
-                const column = parseInt(this.getAttribute('data-column'));
-                sortTable(column);
-            });
-        });
-
-        function sortTable(column) {
-            // Determine sort direction
-            let direction = 'asc';
-            if (currentSort.column === column) {
-                if (currentSort.direction === 'asc') direction = 'desc';
-                else if (currentSort.direction === 'desc') direction = 'none';
-            }
-            
-            // Update header classes
-            document.querySelectorAll('.price-table th').forEach(th => {
-                th.classList.remove('sort-asc', 'sort-desc');
-            });
-            
-            if (direction !== 'none') {
-                const header = document.querySelector(`.price-table th[data-column="${column}"]`);
-                header.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
-                
-                priceData.sort((a, b) => {
-                    let aValue, bValue;
-                    
-                    if (column === 2) { // Price column
-                        aValue = a.priceNum;
-                        bValue = b.priceNum;
-                    } else if (column === 0) { // No column
-                        aValue = priceData.indexOf(a);
-                        bValue = priceData.indexOf(b);
-                    } else { // Item column
-                        aValue = a.item.toLowerCase();
-                        bValue = b.item.toLowerCase();
-                    }
-                    
-                    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-                    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-                    return 0;
-                });
-                
-                renderTable();
-            } else {
-                // Reset to original order
-                initData();
-            }
-            
-            currentSort = { column, direction };
-        }
-
-        // Drag and Drop functionality
-        function handleDragStart(e) {
-            draggedElement = this;
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-        }
-
-        function handleDragEnd(e) {
-            this.classList.remove('dragging');
-            document.querySelectorAll('#tableBody tr').forEach(row => {
-                row.classList.remove('drag-over');
-            });
-        }
-
-        function handleDragOver(e) {
-            if (e.preventDefault) {
-                e.preventDefault();
-            }
-            e.dataTransfer.dropEffect = 'move';
-            this.classList.add('drag-over');
-            return false;
-        }
-
-        function handleDrop(e) {
-            if (e.stopPropagation) {
-                e.stopPropagation();
-            }
-            
-            if (draggedElement !== this) {
-                const tbody = document.getElementById('tableBody');
-                const allRows = [...tbody.querySelectorAll('tr')];
-                const draggedIndex = allRows.indexOf(draggedElement);
-                const targetIndex = allRows.indexOf(this);
-                
-                // Reorder data array
-                const draggedData = priceData[draggedIndex];
-                priceData.splice(draggedIndex, 1);
-                priceData.splice(targetIndex, 0, draggedData);
-                
-                saveToLocalStorage();
-                renderTable();
-            }
-            
-            return false;
-        }
-
-        function handleDragLeave(e) {
-            this.classList.remove('drag-over');
-        }
-
-        // Modal functions
         function openModal() {
             document.getElementById('modalTitle').textContent = 'Add New Item';
-            document.getElementById('editIndex').value = '';
-            document.getElementById('newItem').value = '';
-            document.getElementById('newPrice').value = '';
+            document.getElementById('editId').value = '';
+            document.getElementById('itemInput').value = '';
+            document.getElementById('priceInput').value = '';
             document.getElementById("itemModal").style.display = "flex";
         }
 
@@ -480,63 +386,26 @@
             document.getElementById("itemModal").style.display = "none";
         }
 
-        function editItem(id) {
-            const data = priceData.find(item => item.id === id);
-            
-            if (data) {
-                document.getElementById('modalTitle').textContent = 'Edit Item';
-                document.getElementById('editIndex').value = id;
-                document.getElementById('newItem').value = data.item;
-                document.getElementById('newPrice').value = data.price;
-                document.getElementById("itemModal").style.display = "flex";
-            }
+        function editItem(id, nama_produk, harga, stok, deskripsi, gambar_url) {
+            document.getElementById('modalTitle').textContent = 'Edit Item';
+            document.getElementById('editId').value = id;
+            document.getElementById('nama_produk').value = nama_produk;
+            document.getElementById('harga').value = harga;
+            document.getElementById('stok').value = stok;
+            document.getElementById('deskripsi').value = deskripsi;
+            document.getElementById('gambar_url').value = gambar_url;
+            document.getElementById("itemModal").style.display = "flex";
         }
 
-        function saveItem() {
-            const item = document.getElementById("newItem").value.trim();
-            const price = document.getElementById("newPrice").value.trim();
-            const editIndex = document.getElementById('editIndex').value;
-            
-            if (item && price) {
-                const priceNum = parseInt(price.replace(/\D/g, ''));
-                
-                if (editIndex !== '') {
-                    // Edit existing item
-                    const data = priceData.find(d => d.id === parseInt(editIndex));
-                    if (data) {
-                        data.item = item;
-                        data.price = price;
-                        data.priceNum = priceNum;
-                    }
-                } else {
-                    // Add new item
-                    const newId = priceData.length > 0 ? Math.max(...priceData.map(d => d.id)) + 1 : 1;
-                    priceData.push({
-                        id: newId,
-                        item: item,
-                        price: price,
-                        priceNum: priceNum
-                    });
-                }
-                
-                saveToLocalStorage();
-                renderTable();
-                closeModal();
-            } else {
-                alert('Please fill in all fields');
+
+        // Modal background click to close
+        window.onclick = function(e) {
+            let modal = document.getElementById('itemModal');
+            if (e.target === modal) {
+                modal.style.display = "none";
             }
         }
-
-        function confirmDelete(id) {
-            if (confirm("Are you sure you want to delete this item?")) {
-                priceData = priceData.filter(data => data.id !== id);
-                saveToLocalStorage();
-                renderTable();
-            }
-        }
-
-        // Initialize on page load
-        initData();
     </script>
 </body>
+
 </html>
