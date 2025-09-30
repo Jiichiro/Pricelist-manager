@@ -1,5 +1,4 @@
 <?php
-session_start();
 require __DIR__ . "/../logic/database/connect.php";
 
 // ✅ Cek login
