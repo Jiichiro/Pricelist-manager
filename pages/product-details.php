@@ -1,38 +1,32 @@
 <?php
-// Koneksi ke database
-$host = "localhost";
-$user = "root"; // default user XAMPP
-$pass = "";     // default password XAMPP biasanya kosong
-$db   = "pricelist_manager";
-
-$conn = new mysqli($host, $user, $pass, $db);
-
+require __DIR__ . "../../logic/database/connect.php";
 // Cek koneksi
 if ($conn->connect_error) {
-    die("Koneksi gagal: " . $conn->connect_error);
+  die("Koneksi gagal: " . $conn->connect_error);
 }
 
 // Ambil productId dari URL
 if (isset($_GET['productId'])) {
-    $productId = intval($_GET['productId']); // biar aman
+  $productId = intval($_GET['productId']); // biar aman
 
-    $sql = "SELECT * FROM produk WHERE id = $productId";
-    $result = $conn->query($sql);
+  $sql = "SELECT * FROM produk WHERE id = $productId";
+  $result = $conn->query($sql);
 
-    if ($result->num_rows > 0) {
-        $produk = $result->fetch_assoc();
-    } else {
-        echo "<h2>Produk tidak ditemukan!</h2>";
-        exit;
-    }
-} else {
-    echo "<h2>ID Produk tidak ditemukan!</h2>";
+  if ($result->num_rows > 0) {
+    $produk = $result->fetch_assoc();
+  } else {
+    echo "<h2>Produk tidak ditemukan!</h2>";
     exit;
+  }
+} else {
+  echo "<h2>ID Produk tidak ditemukan!</h2>";
+  exit;
 }
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -47,7 +41,8 @@ if (isset($_GET['productId'])) {
     }
 
     header {
-      background: #0d1b2a; /* biru navy gelap */
+      background: #0d1b2a;
+      /* biru navy gelap */
       color: white;
       padding: 15px 30px;
       text-align: center;
@@ -64,7 +59,7 @@ if (isset($_GET['productId'])) {
       background: white;
       padding: 25px;
       border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
 
     .product-container {
@@ -82,7 +77,7 @@ if (isset($_GET['productId'])) {
     .product-image img {
       max-width: 100%;
       border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
     .product-info {
@@ -96,7 +91,8 @@ if (isset($_GET['productId'])) {
     }
 
     .price {
-      color: #28a745; /* hijau sama dengan dashboard */
+      color: #28a745;
+      /* hijau sama dengan dashboard */
       font-size: 22px;
       font-weight: bold;
       margin: 15px 0;
@@ -129,15 +125,17 @@ if (isset($_GET['productId'])) {
     }
 
     .btn-back {
-      background: #0d6efd; /* biru */
+      background: #0d6efd;
+      /* biru */
       color: white;
     }
+
     .btn-back:hover {
       background: #0a58ca;
     }
-
   </style>
 </head>
+
 <body>
   <header>
     <h1>Detail Produk</h1>
@@ -146,17 +144,18 @@ if (isset($_GET['productId'])) {
   <div class="container">
     <div class="product-container">
       <div class="product-image">
-        <img src="uploads/produk1.jpg" alt="Produk Dummy">
+        <img src="uploads/<?php echo htmlspecialchars($produk['gambar_url']); ?>" alt="<?php echo htmlspecialchars($produk['nama_produk']); ?>">
       </div>
       <div class="product-info">
-        <h2>Produk Dummy 1</h2>
-        <p class="price">Rp 57.354</p>
-        <p class="stock">Stok: 33</p>
-        <p class="desc"><strong>Deskripsi:</strong> <br> Deskripsi produk dummy ke-1</p>
-        
+        <h2><?php echo htmlspecialchars($produk['nama_produk']); ?></h2>
+        <p class="price">Rp <?php echo number_format($produk['harga'], 0, ',', '.'); ?></p>
+        <p class="stock">Stok: <?php echo (int)$produk['stok']; ?></p>
+        <p class="desc"><strong>Deskripsi:</strong> <br> <?php echo nl2br(htmlspecialchars($produk['deskripsi'])); ?></p>
+
         <a href="index.php" class="btn btn-back">⬅ Kembali</a>
       </div>
     </div>
   </div>
 </body>
+
 </html>

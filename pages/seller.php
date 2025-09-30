@@ -1,6 +1,5 @@
 <?php
 // Validasi login dan role
-session_start();
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'penjualan') {
     header("Location: " . __DIR__ . "/../login.php");
     exit();
@@ -8,17 +7,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'penjualan') {
 
 require __DIR__ . "/../components/header.php";
 
-// Koneksi database
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "pricelist_manager";
-
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die("Koneksi gagal: " . $conn->connect_error);
-}
-
+require __DIR__ . "../../logic/database/connect.php";
 // Ambil data produk
 $sql = "SELECT * FROM produk ORDER BY id ASC";
 $result = $conn->query($sql);
@@ -163,7 +152,7 @@ $result = $conn->query($sql);
   <!-- Grid Produk -->
   <div class="product-grid" id="productGrid">
     <?php while ($row = $result->fetch_assoc()): ?>
-      <a href="?productId=<?php echo $row['id']; ?>" 
+      <a href="?page=product-detail&productId=<?php echo $row['id']; ?>" 
          class="product-card" 
          data-kategori="<?php echo $row['id_kategori']; ?>">
         <img src="uploads/<?php echo $row['gambar_url']; ?>" alt="<?php echo htmlspecialchars($row['nama_produk']); ?>">
