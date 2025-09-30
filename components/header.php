@@ -8,11 +8,11 @@
     <!-- Navigation Menu -->
     <nav>
       <ul class="nav-links">
-        <li><a href="#">Dashboard</a></li>
-        <li><a href="#">Pricelist</a></li>
-        <li><a href="#">Katalog</a></li>
-        <li><a href="#">Laporan</a></li>
-        <li><a href="#">Bantuan</a></li>
+        <li><a href="?page=dashboard">Dashboard</a></li>
+        <li><a href="?page=pricelist">Pricelist</a></li>
+        <li><a href="?page=katalog">Katalog</a></li>
+        <li><a href="?page=laporan">Laporan</a></li>
+        <li><a href="?page=bantuan">Bantuan</a></li>
       </ul>
     </nav>
 
