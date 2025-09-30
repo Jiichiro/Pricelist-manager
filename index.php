@@ -19,7 +19,7 @@ switch ($sesi) {
         include "pages/form.php";
         break;
     case "product-detail":
-        include "pages/form.php";
+        include "pages/product-details.php";
         break;
     default:
         echo "<h1>404 Not Found</h1>";
