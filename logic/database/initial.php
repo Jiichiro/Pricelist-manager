@@ -15,7 +15,7 @@ $conn->select_db(DB_NAME);
 if ($conn->query("CREATE TABLE IF NOT EXISTS users (
     id BIGINT(30) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    username varchar(255) NOT NULL,
+    username varchar(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role ENUM('super_admin', 'penjualan') DEFAULT 'penjualan' NOT NULL
 )") !== TRUE) {
