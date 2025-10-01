@@ -3,25 +3,24 @@ session_start();
 
 require_once __DIR__ . "../logic/database/initial.php";
 
-$sesi = $_GET['page'] ?? $_SESSION['role'] ?? 'login';
+$routes = [
+    'login'          => ['file' => 'pages/login.php', 'role'  => null],
+    'super_admin'    => ['file' => 'pages/admin.php', 'role'  => 'super_admin'],
+    'penjualan'      => ['file' => 'pages/seller.php', 'role' => 'penjualan'],
+    'add-user'       => ['file' => 'pages/form.php', 'role'   => 'super_admin'],
+    'product-detail' => ['file' => 'pages/product-details.php', 'role' => 'penjualan'], 
+];
 
-switch ($sesi) {
-    case "login":
-        include "pages/login.php";
-        break;
-    case "super_admin":
-        include "pages/admin.php";
-        break;
-    case "penjualan":
-        include "pages/seller.php";
-        break;
-    case "add-user":
-        include "pages/form.php";
-        break;
-    case "product-detail":
-        include "pages/form.php";
-        break;
-    default:
-        echo "<h1>404 Not Found</h1>";
-        break;
+$page = $_GET['page'] ?? ($_SESSION['role'] ?? 'login');
+
+if (array_key_exists($page, $routes)) {
+    $route = $routes[$page];
+
+    if ($route['role'] === null || ($_SESSION['role'] ?? null) === $route['role']) {
+        include $route['file'];
+    } else {
+        echo "<h1>403 Forbidden - Akses ditolak</h1>";
+    }
+} else {
+    echo "<h1>404 Not Found</h1>";
 }
