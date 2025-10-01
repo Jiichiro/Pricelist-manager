@@ -1,307 +1,285 @@
-<!DOCTYPE html>
+<?php
+// seller.php (dipasang satu file utuh)
+
+// Start session hanya jika belum ada
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Validasi login dan role
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'penjualan') {
+    header("Location: ../login.php");
+    exit();
+}
+
+// Koneksi database
+$host = "localhost";
+$user = "root";
+$pass = "";
+$db   = "pricelist_manager";
+
+$conn = new mysqli($host, $user, $pass, $db);
+if ($conn->connect_error) {
+    die("Koneksi gagal: " . $conn->connect_error);
+}
+
+/* ---------------------------
+   EXPORT HANDLER (Excel / PDF)
+   ---------------------------
+   Endpoint internal:
+   ?action=export_excel&kategori=ID
+   ?action=export_pdf&kategori=ID
+*/
+if (isset($_GET['action']) && isset($_GET['kategori'])) {
+    $action   = $_GET['action'];
+    $kategori = (int) $_GET['kategori'];
+
+    if ($kategori <= 0) {
+        die("Kategori tidak valid.");
+    }
+
+    // Ambil produk sesuai kategori (gabung nama kategori)
+    $stmt = $conn->prepare("
+        SELECT p.id, p.nama_produk, p.harga, p.stok, p.deskripsi, p.gambar_url, k.nama_kategori
+        FROM produk p
+        LEFT JOIN kategori k ON p.id_kategori = k.id
+        WHERE p.id_kategori = ?
+        ORDER BY p.id ASC
+    ");
+    $stmt->bind_param('i', $kategori);
+    $stmt->execute();
+
+    // dapatkan result (jika get_result tersedia)
+    $resExport = null;
+    if (method_exists($stmt, 'get_result')) {
+        $resExport = $stmt->get_result();
+    } else {
+        // fallback manual: kumpulkan ke array
+        $resExport = [];
+        $stmt->bind_result($fid, $fnama, $fharga, $fstok, $fdes, $fgambar, $fnama_kat);
+        while ($stmt->fetch()) {
+            $resExport[] = [
+                'id' => $fid,
+                'nama_produk' => $fnama,
+                'harga' => $fharga,
+                'stok' => $fstok,
+                'deskripsi' => $fdes,
+                'gambar_url' => $fgambar,
+                'nama_kategori' => $fnama_kat
+            ];
+        }
+    }
+
+    // EXPORT EXCEL (XLS simple, TSV) ----------------
+    if ($action === 'export_excel') {
+        header("Content-Type: application/vnd.ms-excel; charset=UTF-8");
+        header("Content-Disposition: attachment; filename=produk_export_kategori_{$kategori}.xls");
+        // BOM agar Excel membaca UTF-8
+        echo "\xEF\xBB\xBF";
+        echo "ID\tNama Produk\tHarga\tStok\tKategori\tDeskripsi\n";
+
+        if (is_array($resExport)) {
+            foreach ($resExport as $r) {
+                $desc = str_replace(["\r", "\n", "\t"], ' ', $r['deskripsi']);
+                echo "{$r['id']}\t{$r['nama_produk']}\t{$r['harga']}\t{$r['stok']}\t{$r['nama_kategori']}\t{$desc}\n";
+            }
+        } else {
+            while ($row = $resExport->fetch_assoc()) {
+                $desc = str_replace(["\r", "\n", "\t"], ' ', $row['deskripsi']);
+                echo "{$row['id']}\t{$row['nama_produk']}\t{$row['harga']}\t{$row['stok']}\t{$row['nama_kategori']}\t{$desc}\n";
+            }
+        }
+
+        $stmt->close();
+        $conn->close();
+        exit();
+    }
+
+    // EXPORT PDF (via Dompdf jika tersedia) ----------
+    if ($action === 'export_pdf') {
+        $autoload = __DIR__ . "/../vendor/autoload.php";
+        if (file_exists($autoload)) {
+            require_once $autoload;
+            if (!class_exists('\Dompdf\Dompdf')) {
+                die("⚠️ Dompdf belum tersedia. Install: composer require dompdf/dompdf");
+            }
+
+            // pastikan $rows adalah array
+            if (is_array($resExport)) {
+                $rows = $resExport;
+            } else {
+                $rows = $resExport->fetch_all(MYSQLI_ASSOC);
+            }
+
+            // build HTML untuk PDF
+            $html = "<html><head><meta charset='utf-8'><style>
+                table{border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif}
+                th,td{border:1px solid #ddd;padding:6px;font-size:12px}
+                th{background:#f3f3f3}
+                </style></head><body>";
+            $html .= "<h3 style='text-align:center;'>Export Produk - Kategori ID: {$kategori}</h3>";
+            $html .= "<table><thead><tr><th>ID</th><th>Nama Produk</th><th>Harga</th><th>Stok</th><th>Kategori</th></tr></thead><tbody>";
+            foreach ($rows as $r) {
+                $html .= "<tr>
+                    <td>{$r['id']}</td>
+                    <td>" . htmlspecialchars($r['nama_produk']) . "</td>
+                    <td>Rp " . number_format($r['harga'], 0, ',', '.') . "</td>
+                    <td>{$r['stok']}</td>
+                    <td>" . htmlspecialchars($r['nama_kategori']) . "</td>
+                </tr>";
+            }
+            $html .= "</tbody></table></body></html>";
+
+            // bersihkan output buffer agar PDF tidak korup
+            if (ob_get_length()) ob_end_clean();
+
+            $dompdf = new \Dompdf\Dompdf();
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+            $dompdf->stream("produk_export_kategori_{$kategori}.pdf", ["Attachment" => true]);
+
+            $stmt->close();
+            $conn->close();
+            exit();
+        } else {
+            // fallback: kirim HTML untuk di-print manual menjadi PDF
+            header("Content-Type: text/html; charset=UTF-8");
+            echo "<h2>Export Produk - Kategori ID: {$kategori}</h2>";
+            echo "<p><strong>⚠️ Dompdf tidak ditemukan.</strong> Buka file ini lalu Print → Save as PDF.</p>";
+            echo "<table border='1' cellpadding='6' cellspacing='0' style='border-collapse:collapse; width:100%'>";
+            echo "<thead><tr><th>ID</th><th>Nama</th><th>Harga</th><th>Stok</th><th>Kategori</th></tr></thead><tbody>";
+            if (is_array($resExport)) {
+                foreach ($resExport as $r) {
+                    echo "<tr>
+                        <td>{$r['id']}</td>
+                        <td>" . htmlspecialchars($r['nama_produk']) . "</td>
+                        <td>Rp " . number_format($r['harga'],0,',','.') . "</td>
+                        <td>{$r['stok']}</td>
+                        <td>" . htmlspecialchars($r['nama_kategori']) . "</td>
+                    </tr>";
+                }
+            } else {
+                while ($row = $resExport->fetch_assoc()) {
+                    echo "<tr>
+                        <td>{$row['id']}</td>
+                        <td>" . htmlspecialchars($row['nama_produk']) . "</td>
+                        <td>Rp " . number_format($row['harga'],0,',','.') . "</td>
+                        <td>{$row['stok']}</td>
+                        <td>" . htmlspecialchars($row['nama_kategori']) . "</td>
+                    </tr>";
+                }
+            }
+            echo "</tbody></table>";
+            $stmt->close();
+            $conn->close();
+            exit();
+        }
+    }
+
+    $stmt->close();
+}
+
+/* ---------------------------
+   NORMAL PAGE: tampilkan katalog
+   --------------------------- */
+// Ambil kategori untuk dropdown (id digunakan untuk filter)
+$kategoriRes = $conn->query("SELECT id, nama_kategori FROM kategori ORDER BY nama_kategori ASC");
+// Ambil produk
+$result = $conn->query("SELECT * FROM produk ORDER BY id ASC");
+
+// include header (jika ada) — include_once supaya tidak duplikat
+$headerPath = __DIR__ . "/../components/header.php";
+if (file_exists($headerPath)) include_once $headerPath;
+?>
+<!doctype html>
 <html lang="id">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
   <title>Dashboard Penjualan</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    .dashboard-container{max-width:1100px;margin:30px auto;padding:30px;background:#fff;border-radius:14px;box-shadow:0 6px 14px rgba(0,0,0,0.08);font-family:'Segoe UI',sans-serif; animation:fadeIn .8s ease-in-out;}
+    .dashboard-container h1{ text-align:center;color:#2c3e50;margin-bottom:8px; }
+    .dashboard-container p{ text-align:center;font-size:15px;color:#555;margin-bottom:25px;line-height:1.6;background:#f8f9fa;padding:12px;border-radius:8px; }
+    .filter-box{ text-align:right;margin-bottom:12px; }
+    .filter-box select,.filter-box button{ padding:8px 12px;border-radius:8px;border:1px solid #ccc;font-size:14px; }
+    .filter-box button{ margin-left:8px;background:#3498db;color:white;border:none;cursor:pointer; }
+    .filter-box button:hover{ background:#2980b9; }
 
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-    }
+    /* grid */
+    .product-grid{ display:grid; gap:16px; }
+    @media (max-width:480px){ .product-grid{ grid-template-columns:repeat(2,1fr); } }
+    @media (min-width:481px) and (max-width:768px){ .product-grid{ grid-template-columns:repeat(4,1fr); } }
+    @media (min-width:769px) and (max-width:1164px){ .product-grid{ grid-template-columns:repeat(6,1fr); } }
+    @media (min-width:1165px){ .product-grid{ grid-template-columns:repeat(7,1fr); } }
 
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 40px 20px;
-    }
+    .product-card{ border:1px solid #e6e6e6; border-radius:10px; overflow:hidden; text-align:center; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.04); transition:transform .15s ease, box-shadow .15s ease; display:block; color:inherit; text-decoration:none; padding-bottom:8px; }
+    .product-card:hover{ transform:translateY(-4px); box-shadow:0 6px 18px rgba(0,0,0,0.08); }
+    .product-card img{ width:100%; height:140px; object-fit:cover; display:block; background:#fafafa; }
+    .name{ font-size:14px; font-weight:600; margin:8px 0 4px; color:#2c3e50; }
+    .price{ font-size:13px; color:#27ae60; margin-bottom:6px; }
 
-    h1 {
-      text-align: center;
-      color: #2c3e50;
-      margin-bottom: 20px;
-      font-size: 32px;
-    }
+    .export-buttons{ text-align:center; margin-top:20px; }
+    .export-buttons button{ padding:10px 18px; margin:6px; border:none; border-radius:8px; font-size:14px; cursor:pointer; color:#fff; }
+    .btn-excel{ background:#27ae60; } .btn-excel:hover{ background:#219150; }
+    .btn-pdf{ background:#e67e22; } .btn-pdf:hover{ background:#ca6b1e; }
 
-    .info-text {
-      text-align: center;
-      color: #666;
-      margin-bottom: 10px;
-    }
-
-    .info-text a {
-      color: #3498db;
-      text-decoration: none;
-    }
-
-    .warning {
-      text-align: center;
-      color: #e74c3c;
-      margin-bottom: 30px;
-    }
-
-    .filter-section {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      margin-bottom: 20px;
-      gap: 10px;
-    }
-
-    .filter-section label {
-      font-weight: bold;
-    }
-
-    .filter-section select {
-      padding: 8px 15px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-
-    .filter-section button {
-      padding: 8px 25px;
-      background-color: #3498db;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .filter-section button:hover {
-      background-color: #2980b9;
-    }
-
-    table {
-      width: 100%;
-      background-color: white;
-      border-collapse: collapse;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    th {
-      background-color: #3498db;
-      color: white;
-      padding: 15px;
-      text-align: center;
-      font-weight: bold;
-    }
-
-    td {
-      padding: 15px;
-      text-align: center;
-      border-bottom: 1px solid #ecf0f1;
-    }
-
-    tr:hover {
-      background-color: #f8f9fa;
-    }
-
-    .export-buttons {
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-      margin-top: 30px;
-    }
-
-    .btn-excel {
-      padding: 12px 30px;
-      background-color: #27ae60;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-excel:hover {
-      background-color: #229954;
-    }
-
-    .btn-pdf {
-      padding: 12px 30px;
-      background-color: #e67e22;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-pdf:hover {
-      background-color: #d35400;
-    }
-
-    footer {
-      background-color: #1a252f;
-      color: white;
-      padding: 40px 20px;
-      margin-top: 60px;
-    }
-
-    .footer-content {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 30px;
-    }
-
-    .footer-section h3 {
-      margin-bottom: 15px;
-      font-size: 18px;
-    }
-
-    .footer-section p,
-    .footer-section a {
-      color: #bbb;
-      line-height: 1.8;
-      text-decoration: none;
-      display: block;
-      margin-bottom: 8px;
-    }
-
-    .footer-section a:hover {
-      color: #3498db;
-    }
+    @keyframes fadeIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
   </style>
 </head>
-
 <body>
-  <div class="container">
+  <div class="dashboard-container">
     <h1>Dashboard Penjualan</h1>
+    <p>Pilih kategori untuk melihat produk. Anda bisa export data ke Excel atau PDF.</p>
 
-    <p class="info-text">
-      Halaman ini menampilkan <strong>Katalog / Pricelist</strong> produk.<br>
-      Anda bisa melakukan <a href="#">filter kategori</a> dan <a href="#">export data ke Excel / PDF</a>.
-    </p>
-
-    <p class="warning">
-      ❌ <strong>Tidak tersedia fitur edit produk.</strong>
-    </p>
-
-    <div class="filter-section">
+    <div class="filter-box">
       <label for="kategori">Kategori:</label>
-      <select id="kategori" name="kategori">
-        <option value="semua">Semua</option>
-        <option value="elektronik">Elektronik</option>
-        <option value="pakaian">Pakaian</option>
+      <select id="kategori">
+        <option value="all">Semua</option>
+        <?php while ($kat = $kategoriRes->fetch_assoc()): ?>
+          <option value="<?= (int)$kat['id']; ?>"><?= htmlspecialchars($kat['nama_kategori']); ?></option>
+        <?php endwhile; ?>
       </select>
-      <button type="button">Filter</button>
+      <button onclick="filterGrid()">Filter</button>
     </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>No</th>
-          <th>Nama Produk</th>
-          <th>Kategori</th>
-          <th>Harga</th>
-          <th>Stok</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>1</td>
-          <td>Produk Dummy 1</td>
-          <td>Elektronik</td>
-          <td>Rp 25.000</td>
-          <td>15</td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td>Produk Dummy 2</td>
-          <td>Pakaian</td>
-          <td>Rp 75.000</td>
-          <td>8</td>
-        </tr>
-        <tr>
-          <td>3</td>
-          <td>Produk Dummy 3</td>
-          <td>Elektronik</td>
-          <td>Rp 120.000</td>
-          <td>5</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="product-grid" id="productGrid">
+      <?php while ($row = $result->fetch_assoc()): ?>
+        <a href="?productId=<?= (int)$row['id']; ?>" class="product-card" data-kategori="<?= (int)$row['id_kategori']; ?>">
+          <?php $img = !empty($row['gambar_url']) ? "uploads/" . $row['gambar_url'] : "https://via.placeholder.com/300x200?text=No+Image"; ?>
+          <img src="<?= htmlspecialchars($img); ?>" alt="<?= htmlspecialchars($row['nama_produk']); ?>">
+          <div class="name"><?= htmlspecialchars($row['nama_produk']); ?></div>
+          <div class="price">Rp <?= number_format($row['harga'],0,',','.'); ?></div>
+        </a>
+      <?php endwhile; ?>
+    </div>
 
     <div class="export-buttons">
-      <a href="export.php?type=excel" class="btn-excel">
-        📊 Export ke Excel
-      </a>
-      <a href="export.php?type=pdf" class="btn-pdf">
-        📄 Export ke PDF
-      </a>
+      <button class="btn-excel" onclick="exportData('excel')">📊 Export ke Excel</button>
+      <button class="btn-pdf" onclick="exportData('pdf')">📄 Export ke PDF</button>
     </div>
-
   </div>
 
-  </div>
-
-  <script>
-    function filterTable() {
-      const kategori = document.getElementById("kategori").value;
-      const rows = document.querySelectorAll("tbody tr");
-
-      rows.forEach(row => {
-        const kategoriCell = row.cells[2].textContent;
-        if (kategori === "semua" || kategoriCell === kategori) {
-          row.style.display = "";
-        } else {
-          row.style.display = "none";
-        }
-      });
+<script>
+function filterGrid(){
+  const kategori = document.getElementById('kategori').value;
+  document.querySelectorAll('#productGrid .product-card').forEach(card=>{
+    if(kategori === 'all' || card.dataset.kategori === kategori.toString()){
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
     }
-
-    // Tambahkan event listener ke tombol filter
-    document.querySelector(".filter-section button").addEventListener("click", filterTable);
-  </script>
-
-  <footer>
-    <div class="footer-content">
-      <div class="footer-section">
-        <h3>Tentang Aplikasi</h3>
-        <p>Website internal untuk manajemen pricelist dan katalog produk dengan role-based access (Super Admin &
-          Penjualan). Dibuat</p>
-      </div>
-      <div class="footer-section">
-        <h3>Fitur Utama</h3>
-        <a href="#">Manajemen Pricelist</a>
-        <a href="#">Manajemen Katalog</a>
-        <a href="#">Hak Akses Super Admin</a>
-      </div>
-      <div class="footer-section">
-        <h3>Informasi</h3>
-        <a href="#">Tentang Sistem</a>
-        <a href="#">Dokumentasi</a>
-        <a href="#">FAQ</a>
-      </div>
-      <div class="footer-section">
-        <h3>Kontak</h3>
-        <p>📍 Jl. Teknologi No. 45, Jakarta</p>
-        <p>📞 +62 812-3456-7890</p>
-        <p>✉️ info@pricelist.com</p>
-      </div>
-    </div>
-  </footer>
+  });
+}
+function exportData(type){
+  const kategori = document.getElementById('kategori').value;
+  if(kategori === 'all'){ alert('⚠️ Pilih kategori dulu sebelum export!'); return; }
+  window.location.href = '?action=export_' + type + '&kategori=' + encodeURIComponent(kategori);
+}
+</script>
 </body>
-
 </html>
-
 <?php
 // Tutup koneksi database jika ada
 if (isset($conn) && $conn !== null) {
