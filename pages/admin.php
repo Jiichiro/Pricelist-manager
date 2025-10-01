@@ -1,411 +1,265 @@
 <?php
-require __DIR__ . "../../logic/database/connect.php";
+require __DIR__ . "/../logic/database/connect.php";
 
-// --- Handle form submissions (Add or Edit) ---
+// --- Handle Ajax POST ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nama_produk = $_POST['nama_produk'];
-    $id_kategori = !empty($_POST['id_kategori']) ? intval($_POST['id_kategori']) : null;
-    $harga = floatval($_POST['harga']);
-    $stok = intval($_POST['stok']);
-    $deskripsi = $_POST['deskripsi'];
-    $gambar_url = $_POST['gambar_url'];
-    $editId = $_POST['editId'];
-
-    if (!empty($editId)) {
-        // Update existing produk
-        $stmt = $conn->prepare("UPDATE produk SET nama_produk=?, id_kategori=?, harga=?, stok=?, deskripsi=?, gambar_url=? WHERE id=?");
-        $stmt->bind_param("sidissi", $nama_produk, $id_kategori, $harga, $stok, $deskripsi, $gambar_url, $editId);
-    } else {
-        // Insert new produk
-        $stmt = $conn->prepare("INSERT INTO produk (nama_produk, id_kategori, harga, stok, deskripsi, gambar_url) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sidiss", $nama_produk, $id_kategori, $harga, $stok, $deskripsi, $gambar_url);
+    // Delete
+    if (isset($_POST['deleteId'])) {
+        $id = intval($_POST['deleteId']);
+        echo $conn->query("DELETE FROM produk WHERE id=$id") ? "deleted" : "Error";
+        exit;
     }
 
-    $stmt->execute();
-    $stmt->close();
+    // Add/Edit
+    $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    $nama = $_POST['nama'] ?? "";
+    $harga = $_POST['harga'] ?? "";
 
-    header("Location: " . $_SERVER['PHP_SELF']);
-    exit();
+    if ($id > 0) {
+        $stmt = $conn->prepare("UPDATE produk SET nama_produk=?, harga=? WHERE id=?");
+        $stmt->bind_param("ssi", $nama, $harga, $id);
+        echo $stmt->execute() ? "success" : "Error";
+    } else {
+        $stmt = $conn->prepare("INSERT INTO produk(nama_produk,harga) VALUES(?,?)");
+        $stmt->bind_param("ss", $nama, $harga);
+        echo $stmt->execute() ? "success" : "Error";
+    }
+    exit;
 }
 
-// --- Handle delete request ---
-if (isset($_GET['delete'])) {
-    $deleteId = intval($_GET['delete']);
-    $stmt = $conn->prepare("DELETE FROM produk WHERE id = ?");
-    $stmt->bind_param("i", $deleteId);
-    $stmt->execute();
-    $stmt->close();
-
-    header("Location: " . $_SERVER['PHP_SELF']);
-    exit();
+// --- Ambil data dari database ---
+$result = $conn->query("SELECT * FROM produk ORDER BY id ASC");
+$produkList = [];
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $produkList[] = $row;
+    }
 }
 
-// --- Fetch all produk data ---
-$result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
-$produkData = $result->fetch_all(MYSQLI_ASSOC);
 ?>
 
-<!DOCTYPE html>
-<html lang="id">
+<style>
+body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
+.dashboard-container{display:flex;}
+.main-content{margin:20px 40px 20px 280px;padding:20px;width:100%;}
+.card{background:#fff;border-radius:8px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:20px;}
+.card h3{margin:0 0 15px;}
+.price-table{width:100%;border-collapse:collapse;}
+.price-table th,.price-table td{padding:12px;border:1px solid #ddd;text-align:center;border-radius:4px;}
+.price-table th{background:#1abc9c;color:#fff;}
+.actions button{margin:0 3px;padding:5px 10px;border:none;border-radius:4px;cursor:pointer;}
+.actions .edit{background:#3498db;color:#fff;}
+.actions .delete{background:#e74c3c;color:#fff;}
+.search-add{display:flex;justify-content:space-between;margin-bottom:15px;align-items:center;flex-wrap:wrap;gap:10px;}
+.search-add input{padding:8px;width:200px;border:1px solid #ccc;border-radius:4px;}
+.search-add button{background:#1abc9c;color:#fff;padding:8px 12px;border:none;border-radius:4px;cursor:pointer;}
+.export-buttons{display:flex;gap:8px;}
+.export-buttons button{padding:8px 12px;border:none;border-radius:4px;cursor:pointer;color:#fff;font-weight:bold;}
+.export-excel{background:#27ae60;}
+.export-excel:hover{background:#229954;}
+.export-pdf{background:#e74c3c;}
+.export-pdf:hover{background:#c0392b;}
+.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;}
+.modal-content{background:#fff;padding:20px;border-radius:8px;width:350px;}
+.modal-content h4{margin-top:0;}
+.modal-content input{width:100%;padding:8px;margin:5px 0 10px;border:1px solid #ccc;border-radius:4px;}
+.modal-content button{padding:8px 12px;border:none;border-radius:8px;cursor:pointer;}
+.close{float:right;font-size:20px;cursor:pointer;}
+</style>
 
-<head>
-    <meta charset="UTF-8">
-    <title>Admin Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            margin: 0;
-            padding: 0;
-            color: #2c3e50;
-        }
-
-        .dashboard-container {
-            display: flex;
-        }
-
-        .sidebar {
-            width: 220px;
-            background: #2c3e50;
-            color: white;
-            height: 100vh;
-            padding: 20px;
-            box-sizing: border-box;
-            position: fixed;
-            top: 0;
-            left: 0;
-        }
-
-        .sidebar h2 {
-            font-size: 22px;
-            margin-bottom: 30px;
-        }
-
-        .sidebar a {
-            display: block;
-            color: #ecf0f1;
-            text-decoration: none;
-            padding: 10px 0;
-            transition: 0.3s;
-        }
-
-        .sidebar a:hover {
-            color: #1abc9c;
-            padding-left: 10px;
-        }
-
-        .main-content {
-            margin-left: 240px;
-            padding: 20px;
-            width: 100%;
-        }
-
-        .main-content h1 {
-            font-size: 28px;
-            margin-bottom: 5px;
-        }
-
-        .main-content p {
-            margin-bottom: 20px;
-            color: #666;
-        }
-
-        .card {
-            background: #fff;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-
-        .card h3 {
-            margin: 0 0 15px;
-        }
-
-        .price-table {
-            width: 100%;
-            border-collapse: collapse;
-            overflow: hidden;
-            border-radius: 8px;
-        }
-
-        .price-table th,
-        .price-table td {
-            padding: 12px;
-            border: 1px solid #ddd;
-            text-align: center;
-        }
-
-        .price-table th {
-            background: #1abc9c;
-            color: #fff;
-            font-weight: bold;
-            cursor: pointer;
-            user-select: none;
-            position: relative;
-        }
-
-        .price-table th:hover {
-            background: #16a085;
-        }
-
-        .price-table th::after {
-            content: ' ⇅';
-            font-size: 12px;
-            opacity: 0.5;
-        }
-
-        .price-table th.sort-asc::after {
-            content: ' ▲';
-            opacity: 1;
-        }
-
-        .price-table th.sort-desc::after {
-            content: ' ▼';
-            opacity: 1;
-        }
-
-        .price-table tbody tr {
-            background: #fff;
-            cursor: move;
-            transition: background 0.2s;
-        }
-
-        .price-table tbody tr:nth-child(even) {
-            background: #f9f9f9;
-        }
-
-        .price-table tbody tr:hover {
-            background: #f1f7fd;
-        }
-
-        .price-table tbody tr.dragging {
-            opacity: 0.5;
-            background: #e8f5e9;
-        }
-
-        .price-table tbody tr.drag-over {
-            border-top: 3px solid #1abc9c;
-        }
-
-        .drag-handle {
-            cursor: move;
-            color: #95a5a6;
-            margin-right: 5px;
-        }
-
-        .actions button {
-            margin: 0 3px;
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .actions .edit {
-            background: #3498db;
-            color: #fff;
-        }
-
-        .actions .delete {
-            background: #e74c3c;
-            color: #fff;
-        }
-
-        .search-add {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }
-
-        .search-add input {
-            padding: 8px;
-            width: 220px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        .search-add button {
-            background: #1abc9c;
-            color: #fff;
-            padding: 8px 14px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            width: 350px;
-        }
-
-        .modal-content h4 {
-            margin-top: 0;
-            margin-bottom: 10px;
-        }
-
-        .modal-content input {
-            width: 100%;
-            padding: 8px;
-            margin: 6px 0 12px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        .modal-content button {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .close {
-            float: right;
-            font-size: 20px;
-            cursor: pointer;
-        }
-
-        .info-text {
-            font-size: 13px;
-            color: #7f8c8d;
-            margin-bottom: 10px;
-            font-style: italic;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="dashboard-container">
-        <div class="sidebar">
-            <h2>Admin Panel</h2>
-            <a href="./">Dashboard</a>
-            <a href="#">Manage Price List</a>
-            <a href="?page=add-user">Users</a>
-            <a href="#">Settings</a>
-            <a href="./logic/auth/logout.php">Logout</a>
-        </div>
-
-        <div class="main-content">
-            <h1>Admin Dashboard</h1>
-            <p>Welcome to the admin dashboard. Here you can manage the price list.</p>
+<div class="dashboard-container">
+    <?php include __DIR__ . '../../components/sidebar.php'; ?>
+    <div class="main-content">
+        <h1>Admin Dashboard</h1>
+        <p>Manage your price list below.</p>
 
             <div class="card">
                 <h3>Price List</h3>
 
-                <div class="search-add">
-                    <input type="text" id="searchInput" placeholder="Search item...">
+            <div class="search-add">
+                <input type="text" id="searchInput" placeholder="Search item...">
+                <div style="display:flex;gap:8px;">
+                    <div class="export-buttons">
+                        <button class="export-excel" onclick="exportToExcel()">📊 Export Excel</button>
+                        <button class="export-pdf" onclick="exportToPDF()">📄 Export PDF</button>
+                    </div>
                     <button onclick="openModal()">+ Add Item</button>
                 </div>
-
-                <table class="price-table" id="priceTable">
-                    <thead>
-                        <tr>
-                            <th>No</th>
-                            <th>Item</th>
-                            <th>Price</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <?php foreach ($produkData as $index => $row): ?>
-                            <tr>
-                                <td><?= $index + 1 ?></td>
-                                <td><?= htmlspecialchars($row['nama_produk']) ?></td>
-                                <td>Rp <?php echo number_format($row['harga'], 0, ',', '.'); ?></td>
-                                <td class="actions">
-                                    <button class="edit" onclick="editItem(<?= $row['id'] ?>,'<?= addslashes($row['nama_produk']) ?>','<?= $row['harga'] ?>','<?= $row['stok'] ?>','<?= addslashes($row['deskripsi']) ?>','<?= addslashes($row['gambar_url']) ?>')">Edit</button>
-
-                                    <a href="?delete=<?= $row['id'] ?>" onclick="return confirm('Are you sure?')">
-                                        <button class="delete">Delete</button>
-                                    </a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
             </div>
+
+            <table class="price-table" id="priceTable">
+                <tr>
+                    <th>No</th>
+                    <th>Item</th>
+                    <th>Price</th>
+                    <th>Action</th>
+                </tr>
+                <?php foreach($produkList as $index => $p): ?>
+                <tr data-id="<?= $p['id'] ?>">
+                    <td><?= $index + 1 ?></td>
+                    <td><?= htmlspecialchars($p['nama_produk']) ?></td>
+                    <td><?= htmlspecialchars($p['harga']) ?></td>
+                    <td class="actions">
+                        <button class="edit" onclick="openEditModal(this)">Edit</button>
+                        <button class="delete" onclick="deleteItem(this)">Delete</button>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
         </div>
     </div>
+</div>
 
-    <!-- Modal for Add/Edit -->
-    <div class="modal" id="itemModal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h4 id="modalTitle">Add New Item</h4>
-            <form method="POST">
-                <input type="hidden" id="editId" name="editId">
-                <input type="text" id="nama_produk" name="nama_produk" placeholder="Nama Produk" required>
-                <input type="number" step="0.01" id="harga" name="harga" placeholder="Harga (contoh: 100000)" required>
-                <input type="number" id="stok" name="stok" placeholder="Stok" required>
-                <input type="text" id="deskripsi" name="deskripsi" placeholder="Deskripsi">
-                <input type="text" id="gambar_url" name="gambar_url" placeholder="URL Gambar (opsional)">
-                <button style="background:#1abc9c; color:#fff;" type="submit">Save</button>
-            </form>
-
-        </div>
+<!-- Modal -->
+<div class="modal" id="itemModal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h4 id="modalTitle">Add New Item</h4>
+        <input type="hidden" id="itemId">
+        <input type="text" id="itemName" placeholder="Item name">
+        <input type="text" id="itemPrice" placeholder="Price">
+        <button style="background:#1abc9c;color:#fff;" onclick="saveItem()">Save</button>
     </div>
+</div>
 
-    <script>
-        // Filter/Search
-        document.getElementById("searchInput").addEventListener("keyup", function() {
-            let filter = this.value.toLowerCase();
-            let rows = document.querySelectorAll("#tableBody tr");
-            rows.forEach((row) => {
-                let item = row.cells[1].textContent.toLowerCase();
-                row.style.display = item.includes(filter) ? "" : "none";
-            });
-        });
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
-        function openModal() {
-            document.getElementById('modalTitle').textContent = 'Add New Item';
-            document.getElementById('editId').value = '';
-            document.getElementById('itemInput').value = '';
-            document.getElementById('priceInput').value = '';
-            document.getElementById("itemModal").style.display = "flex";
-        }
+<script>
+// Search
+document.getElementById("searchInput").addEventListener("keyup", function() {
+    let filter = this.value.toLowerCase();
+    document.querySelectorAll("#priceTable tr").forEach((row,index)=>{
+        if(index===0) return;
+        let text = row.cells[1].textContent.toLowerCase();
+        row.style.display = text.includes(filter) ? "" : "none";
+    });
+});
 
-        function closeModal() {
-            document.getElementById("itemModal").style.display = "none";
-        }
+// Modal
+function openModal() {
+    document.getElementById("modalTitle").innerText="Add New Item";
+    document.getElementById("itemId").value="";
+    document.getElementById("itemName").value="";
+    document.getElementById("itemPrice").value="";
+    document.getElementById("itemModal").style.display="flex";
+}
+function closeModal() {
+    document.getElementById("itemModal").style.display="none";
+}
+function openEditModal(btn) {
+    let row = btn.closest("tr");
+    document.getElementById("modalTitle").innerText="Edit Item";
+    document.getElementById("itemId").value = row.dataset.id;
+    document.getElementById("itemName").value = row.cells[1].textContent;
+    document.getElementById("itemPrice").value = row.cells[2].textContent;
+    document.getElementById("itemModal").style.display="flex";
+}
 
-        function editItem(id, nama_produk, harga, stok, deskripsi, gambar_url) {
-            document.getElementById('modalTitle').textContent = 'Edit Item';
-            document.getElementById('editId').value = id;
-            document.getElementById('nama_produk').value = nama_produk;
-            document.getElementById('harga').value = harga;
-            document.getElementById('stok').value = stok;
-            document.getElementById('deskripsi').value = deskripsi;
-            document.getElementById('gambar_url').value = gambar_url;
-            document.getElementById("itemModal").style.display = "flex";
-        }
+// Save item (Add/Edit)
+function saveItem() {
+    let id = document.getElementById("itemId").value;
+    let nama = document.getElementById("itemName").value;
+    let harga = document.getElementById("itemPrice").value;
 
+    if(!nama || !harga) { alert("Fill all fields"); return; }
 
-        // Modal background click to close
-        window.onclick = function(e) {
-            let modal = document.getElementById('itemModal');
-            if (e.target === modal) {
-                modal.style.display = "none";
+    let formData = new FormData();
+    formData.append("id", id);
+    formData.append("nama", nama);
+    formData.append("harga", harga);
+
+    fetch("", {method:"POST", body:formData})
+    .then(res=>res.text())
+    .then(res=>{
+        if(res==="success") location.reload();
+        else alert("Error saving data");
+    });
+}
+
+// Delete
+function deleteItem(btn){
+    if(!confirm("Are you sure?")) return;
+    let row = btn.closest("tr");
+    let id = row.dataset.id;
+
+    let formData = new FormData();
+    formData.append("deleteId", id);
+
+    fetch("", {method:"POST", body:formData})
+    .then(res=>res.text())
+    .then(res=>{
+        if(res==="deleted") row.remove();
+        else alert("Error deleting data");
+    });
+}
+
+// Export to Excel
+function exportToExcel() {
+    let table = document.getElementById("priceTable");
+    let wb = XLSX.utils.book_new();
+    
+    // Ambil data yang terlihat saja (tidak termasuk yang di-filter)
+    let data = [];
+    let rows = table.querySelectorAll("tr");
+    
+    rows.forEach((row, index) => {
+        if(row.style.display === "none") return; // Skip hidden rows
+        
+        let rowData = [];
+        let cells = row.querySelectorAll("th, td");
+        
+        cells.forEach((cell, cellIndex) => {
+            // Skip kolom Action (kolom terakhir)
+            if(cellIndex < cells.length - 1) {
+                rowData.push(cell.textContent);
             }
-        }
-    </script>
-</body>
+        });
+        
+        data.push(rowData);
+    });
+    
+    let ws = XLSX.utils.aoa_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, "Price List");
+    XLSX.writeFile(wb, "price_list.xlsx");
+}
+
+// Export to PDF
+function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    let doc = new jsPDF();
+    
+    // Ambil data yang terlihat saja
+    let rows = [];
+    let table = document.getElementById("priceTable");
+    let tableRows = table.querySelectorAll("tr");
+    
+    tableRows.forEach((row, index) => {
+        if(row.style.display === "none") return; // Skip hidden rows
+        
+        let rowData = [];
+        let cells = row.querySelectorAll("th, td");
+        
+        cells.forEach((cell, cellIndex) => {
+            // Skip kolom Action (kolom terakhir)
+            if(cellIndex < cells.length - 1) {
+                rowData.push(cell.textContent);
+            }
+        });
+        
+        rows.push(rowData);
+    });
+    
+    doc.autoTable({
+        head: [rows[0]],
+        body: rows.slice(1),
+        theme: 'grid',
+        headStyles: { fillColor: [26, 188, 156] }
+    });
+    
+    doc.save("price_list.pdf");
+}
+</script>
 
 </html>
