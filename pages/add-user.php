@@ -45,11 +45,7 @@ $result = $conn->query("SELECT id, name, username, role FROM users");
         * {margin:0;padding:0;box-sizing:border-box;}
         body {font-family:'Segoe UI', Tahoma, sans-serif;background:#f4f6f9;color:#2c3e50;}
         .dashboard-container {display:flex;}
-        .sidebar {width:220px;background:#2c3e50;color:#fff;height:100vh;padding:20px;position:fixed;top:0;left:0;}
-        .sidebar h2 {font-size:22px;margin-bottom:30px;text-align:center;}
-        .sidebar a {display:block;color:#ecf0f1;text-decoration:none;padding:10px 0;transition:.3s;}
-        .sidebar a:hover {color:#1abc9c;padding-left:10px;}
-        .main-content {margin-left:240px;padding:25px;width:100%;}
+        .main-content {margin-left:280px;padding:25px;width:100%;}
         .main-content h1 {margin-bottom:20px;font-size:26px;color:#34495e;}
         .container {max-width:900px;padding:20px;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08);}
         h2 {margin-bottom:15px;color:#2c3e50;}
@@ -68,14 +64,7 @@ $result = $conn->query("SELECT id, name, username, role FROM users");
 
 <body>
     <div class="dashboard-container">
-        <div class="sidebar">
-            <h2>Admin Panel</h2>
-            <a href="./">Dashboard</a>
-            <a href="#tambah">Tambah User</a>
-            <a href="#daftar">Daftar User</a>
-            <a href="./logic/auth/logout.php">Logout</a>
-        </div>
-
+        <?php include __DIR__ . '../../components/sidebar.php'; ?>
         <div class="main-content">
             <h1>Halaman Admin</h1>
             <div class="container">
