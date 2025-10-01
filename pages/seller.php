@@ -1,189 +1,310 @@
-<?php
-// Validasi login dan role
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'penjualan') {
-    header("Location: " . __DIR__ . "/../login.php");
-    exit();
-}
+<!DOCTYPE html>
+<html lang="id">
 
-require __DIR__ . "/../components/header.php";
-
-require __DIR__ . "../../logic/database/connect.php";
-// Ambil data produk
-$sql = "SELECT * FROM produk ORDER BY id ASC";
-$result = $conn->query($sql);
-?>
-<style>
-.dashboard-container {
-  max-width: 1100px;
-  margin: 30px auto;
-  padding: 30px;
-  background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 6px 14px rgba(0,0,0,0.08);
-  font-family: 'Segoe UI', sans-serif;
-  animation: fadeIn 0.8s ease-in-out;
-}
-.dashboard-container h1 {
-  text-align: center;
-  color: #2c3e50;
-  margin-bottom: 8px;
-}
-.dashboard-container p {
-  text-align: center;
-  font-size: 15px;
-  color: #555;
-  margin-bottom: 25px;
-  line-height: 1.6;
-  background: #f8f9fa;
-  padding: 12px;
-  border-radius: 8px;
-}
-.filter-box {
-  text-align: right;
-  margin-bottom: 12px;
-}
-.filter-box select, .filter-box button {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-  transition: 0.3s;
-}
-.filter-box button {
-  margin-left: 8px;
-  background: #3498db;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-.filter-box button:hover {
-  background: #2980b9;
-}
-/* GRID PRODUK */
-.product-grid {
-  display: grid;
-  gap: 16px;
-}
-@media (max-width: 480px) {
-  .product-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (min-width: 481px) and (max-width: 768px) {
-  .product-grid { grid-template-columns: repeat(4, 1fr); }
-}
-@media (min-width: 769px) and (max-width: 1164px) {
-  .product-grid { grid-template-columns: repeat(6, 1fr); }
-}
-@media (min-width: 1165px) {
-  .product-grid { grid-template-columns: repeat(7, 1fr); }
-}
-.product-card {
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  overflow: hidden;
-  text-align: center;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.product-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-.product-card img {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-}
-.product-card .name {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 8px 0 4px;
-  color: #2c3e50;
-}
-.product-card .price {
-  font-size: 13px;
-  color: #27ae60;
-  margin-bottom: 10px;
-}
-.export-buttons {
-  text-align: center;
-  margin-top: 20px;
-}
-.export-buttons button {
-  padding: 12px 22px;
-  margin: 5px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: 0.3s;
-  color: white;
-}
-.btn-excel { background: #27ae60; }
-.btn-excel:hover { background: #219150; }
-.btn-pdf { background: #e67e22; }
-.btn-pdf:hover { background: #ca6b1e; }
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>
-
-<div class="dashboard-container">
-  <h1>Dashboard Penjualan</h1>
-  <p>
-    Halaman ini menampilkan <b>Katalog / Pricelist</b> produk.<br>
-    Anda bisa melakukan <span style="color:#2980b9;">filter kategori</span> dan 
-    <span style="color:#e67e22;">export data ke Excel / PDF</span>. <br>
-    <b style="color:#e74c3c;">❌ Tidak tersedia fitur edit produk.</b>
-  </p>
-
-  <div class="filter-box">
-    <label for="kategori" style="font-weight:bold; margin-right:8px;">Kategori:</label>
-    <select id="kategori">
-      <option value="all">Semua</option>
-      <option value="elektronik">Elektronik</option>
-      <option value="pakaian">Pakaian</option>
-    </select>
-    <button onclick="filterGrid()">Filter</button>
-  </div>
-
-  <!-- Grid Produk -->
-  <div class="product-grid" id="productGrid">
-    <?php while ($row = $result->fetch_assoc()): ?>
-      <a href="?page=product-detail&productId=<?php echo $row['id']; ?>" 
-         class="product-card" 
-         data-kategori="<?php echo $row['id_kategori']; ?>">
-        <img src="uploads/<?php echo $row['gambar_url']; ?>" alt="<?php echo htmlspecialchars($row['nama_produk']); ?>">
-        <div class="name"><?php echo htmlspecialchars($row['nama_produk']); ?></div>
-        <div class="price">Rp <?php echo number_format($row['harga'], 0, ',', '.'); ?></div>
-      </a>
-    <?php endwhile; ?>
-  </div>
-
-  <!-- Tombol export -->
-  <div class="export-buttons">
-    <button class="btn-excel">📊 Export ke Excel</button>
-    <button class="btn-pdf">📄 Export ke PDF</button>
-  </div>
-</div>
-
-<script>
-function filterGrid() {
-  const kategori = document.getElementById("kategori").value;
-  const cards = document.querySelectorAll("#productGrid .product-card");
-  cards.forEach(card => {
-    if (kategori === "all" || card.dataset.kategori === kategori) {
-      card.style.display = "block";
-    } else {
-      card.style.display = "none";
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Penjualan</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-  });
-}
-</script>
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 20px;
+      font-size: 32px;
+    }
+
+    .info-text {
+      text-align: center;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .info-text a {
+      color: #3498db;
+      text-decoration: none;
+    }
+
+    .warning {
+      text-align: center;
+      color: #e74c3c;
+      margin-bottom: 30px;
+    }
+
+    .filter-section {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+
+    .filter-section label {
+      font-weight: bold;
+    }
+
+    .filter-section select {
+      padding: 8px 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .filter-section button {
+      padding: 8px 25px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .filter-section button:hover {
+      background-color: #2980b9;
+    }
+
+    table {
+      width: 100%;
+      background-color: white;
+      border-collapse: collapse;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    th {
+      background-color: #3498db;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    td {
+      padding: 15px;
+      text-align: center;
+      border-bottom: 1px solid #ecf0f1;
+    }
+
+    tr:hover {
+      background-color: #f8f9fa;
+    }
+
+    .export-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 30px;
+    }
+
+    .btn-excel {
+      padding: 12px 30px;
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-excel:hover {
+      background-color: #229954;
+    }
+
+    .btn-pdf {
+      padding: 12px 30px;
+      background-color: #e67e22;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-pdf:hover {
+      background-color: #d35400;
+    }
+
+    footer {
+      background-color: #1a252f;
+      color: white;
+      padding: 40px 20px;
+      margin-top: 60px;
+    }
+
+    .footer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 30px;
+    }
+
+    .footer-section h3 {
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .footer-section p,
+    .footer-section a {
+      color: #bbb;
+      line-height: 1.8;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .footer-section a:hover {
+      color: #3498db;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Dashboard Penjualan</h1>
+
+    <p class="info-text">
+      Halaman ini menampilkan <strong>Katalog / Pricelist</strong> produk.<br>
+      Anda bisa melakukan <a href="#">filter kategori</a> dan <a href="#">export data ke Excel / PDF</a>.
+    </p>
+
+    <p class="warning">
+      ❌ <strong>Tidak tersedia fitur edit produk.</strong>
+    </p>
+
+    <div class="filter-section">
+      <label for="kategori">Kategori:</label>
+      <select id="kategori" name="kategori">
+        <option value="semua">Semua</option>
+        <option value="elektronik">Elektronik</option>
+        <option value="pakaian">Pakaian</option>
+      </select>
+      <button type="button">Filter</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Nama Produk</th>
+          <th>Kategori</th>
+          <th>Harga</th>
+          <th>Stok</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Produk Dummy 1</td>
+          <td>Elektronik</td>
+          <td>Rp 25.000</td>
+          <td>15</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Produk Dummy 2</td>
+          <td>Pakaian</td>
+          <td>Rp 75.000</td>
+          <td>8</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Produk Dummy 3</td>
+          <td>Elektronik</td>
+          <td>Rp 120.000</td>
+          <td>5</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="export-buttons">
+      <a href="export.php?type=excel" class="btn-excel">
+        📊 Export ke Excel
+      </a>
+      <a href="export.php?type=pdf" class="btn-pdf">
+        📄 Export ke PDF
+      </a>
+    </div>
+
+  </div>
+
+  </div>
+
+  <script>
+    function filterTable() {
+      const kategori = document.getElementById("kategori").value;
+      const rows = document.querySelectorAll("tbody tr");
+
+      rows.forEach(row => {
+        const kategoriCell = row.cells[2].textContent;
+        if (kategori === "semua" || kategoriCell === kategori) {
+          row.style.display = "";
+        } else {
+          row.style.display = "none";
+        }
+      });
+    }
+
+    // Tambahkan event listener ke tombol filter
+    document.querySelector(".filter-section button").addEventListener("click", filterTable);
+  </script>
+
+  <footer>
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Tentang Aplikasi</h3>
+        <p>Website internal untuk manajemen pricelist dan katalog produk dengan role-based access (Super Admin &
+          Penjualan). Dibuat</p>
+      </div>
+      <div class="footer-section">
+        <h3>Fitur Utama</h3>
+        <a href="#">Manajemen Pricelist</a>
+        <a href="#">Manajemen Katalog</a>
+        <a href="#">Hak Akses Super Admin</a>
+      </div>
+      <div class="footer-section">
+        <h3>Informasi</h3>
+        <a href="#">Tentang Sistem</a>
+        <a href="#">Dokumentasi</a>
+        <a href="#">FAQ</a>
+      </div>
+      <div class="footer-section">
+        <h3>Kontak</h3>
+        <p>📍 Jl. Teknologi No. 45, Jakarta</p>
+        <p>📞 +62 812-3456-7890</p>
+        <p>✉️ info@pricelist.com</p>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>
 
 <?php
-require __DIR__ . "/../components/footer.php";
-$conn->close();
-?>                               
+// Tutup koneksi database jika ada
+if (isset($conn) && $conn !== null) {
+  $conn->close();
+}
+?>
