@@ -13,15 +13,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'penjualan') {
 }
 
 // Koneksi database
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "pricelist_manager";
-
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die("Koneksi gagal: " . $conn->connect_error);
-}
+require __DIR__ . "/../logic/database/connect.php";
 
 /* ---------------------------
    EXPORT HANDLER (Excel / PDF)
@@ -34,8 +26,9 @@ if (isset($_GET['action']) && isset($_GET['kategori'])) {
     $action   = $_GET['action'];
     $kategori = (int) $_GET['kategori'];
 
+    // Validasi: kategori harus dipilih (tidak boleh 0 atau "all")
     if ($kategori <= 0) {
-        die("Kategori tidak valid.");
+        die("❌ Kategori tidak valid. Silakan pilih salah satu kategori terlebih dahulu.");
     }
 
     // Ambil produk sesuai kategori (gabung nama kategori)
@@ -95,86 +88,141 @@ if (isset($_GET['action']) && isset($_GET['kategori'])) {
         exit();
     }
 
-    // EXPORT PDF (via Dompdf jika tersedia) ----------
+    // EXPORT PDF (Manual - Tanpa Library) ----------
     if ($action === 'export_pdf') {
-        $autoload = __DIR__ . "/../vendor/autoload.php";
-        if (file_exists($autoload)) {
-            require_once $autoload;
-            if (!class_exists('\Dompdf\Dompdf')) {
-                die("⚠️ Dompdf belum tersedia. Install: composer require dompdf/dompdf");
-            }
-
-            // pastikan $rows adalah array
-            if (is_array($resExport)) {
-                $rows = $resExport;
-            } else {
-                $rows = $resExport->fetch_all(MYSQLI_ASSOC);
-            }
-
-            // build HTML untuk PDF
-            $html = "<html><head><meta charset='utf-8'><style>
-                table{border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif}
-                th,td{border:1px solid #ddd;padding:6px;font-size:12px}
-                th{background:#f3f3f3}
-                </style></head><body>";
-            $html .= "<h3 style='text-align:center;'>Export Produk - Kategori ID: {$kategori}</h3>";
-            $html .= "<table><thead><tr><th>ID</th><th>Nama Produk</th><th>Harga</th><th>Stok</th><th>Kategori</th></tr></thead><tbody>";
-            foreach ($rows as $r) {
-                $html .= "<tr>
-                    <td>{$r['id']}</td>
-                    <td>" . htmlspecialchars($r['nama_produk']) . "</td>
-                    <td>Rp " . number_format($r['harga'], 0, ',', '.') . "</td>
-                    <td>{$r['stok']}</td>
-                    <td>" . htmlspecialchars($r['nama_kategori']) . "</td>
-                </tr>";
-            }
-            $html .= "</tbody></table></body></html>";
-
-            // bersihkan output buffer agar PDF tidak korup
-            if (ob_get_length()) ob_end_clean();
-
-            $dompdf = new \Dompdf\Dompdf();
-            $dompdf->loadHtml($html);
-            $dompdf->setPaper('A4', 'portrait');
-            $dompdf->render();
-            $dompdf->stream("produk_export_kategori_{$kategori}.pdf", ["Attachment" => true]);
-
-            $stmt->close();
-            $conn->close();
-            exit();
+        // pastikan $rows adalah array
+        if (is_array($resExport)) {
+            $rows = $resExport;
         } else {
-            // fallback: kirim HTML untuk di-print manual menjadi PDF
-            header("Content-Type: text/html; charset=UTF-8");
-            echo "<h2>Export Produk - Kategori ID: {$kategori}</h2>";
-            echo "<p><strong>⚠️ Dompdf tidak ditemukan.</strong> Buka file ini lalu Print → Save as PDF.</p>";
-            echo "<table border='1' cellpadding='6' cellspacing='0' style='border-collapse:collapse; width:100%'>";
-            echo "<thead><tr><th>ID</th><th>Nama</th><th>Harga</th><th>Stok</th><th>Kategori</th></tr></thead><tbody>";
-            if (is_array($resExport)) {
-                foreach ($resExport as $r) {
-                    echo "<tr>
-                        <td>{$r['id']}</td>
-                        <td>" . htmlspecialchars($r['nama_produk']) . "</td>
-                        <td>Rp " . number_format($r['harga'],0,',','.') . "</td>
-                        <td>{$r['stok']}</td>
-                        <td>" . htmlspecialchars($r['nama_kategori']) . "</td>
-                    </tr>";
-                }
-            } else {
-                while ($row = $resExport->fetch_assoc()) {
-                    echo "<tr>
-                        <td>{$row['id']}</td>
-                        <td>" . htmlspecialchars($row['nama_produk']) . "</td>
-                        <td>Rp " . number_format($row['harga'],0,',','.') . "</td>
-                        <td>{$row['stok']}</td>
-                        <td>" . htmlspecialchars($row['nama_kategori']) . "</td>
-                    </tr>";
-                }
-            }
-            echo "</tbody></table>";
-            $stmt->close();
-            $conn->close();
-            exit();
+            $rows = $resExport->fetch_all(MYSQLI_ASSOC);
         }
+
+        // Ambil nama kategori untuk judul
+        $namaKategori = !empty($rows[0]['nama_kategori']) ? $rows[0]['nama_kategori'] : "Kategori {$kategori}";
+
+        // Build HTML yang siap di-print sebagai PDF
+        $html = "<!DOCTYPE html>
+<html lang='id'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Export Produk - {$namaKategori}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: Arial, Helvetica, sans-serif; 
+            padding: 20px;
+            background: white;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #3498db;
+        }
+        h1 { 
+            color: #2c3e50; 
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        tr:hover {
+            background: #ecf0f1;
+        }
+        .no-print {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .btn-print {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .btn-print:hover {
+            background: #219150;
+        }
+        @media print {
+            .no-print { display: none; }
+            body { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class='header'>
+        <h1>Export Produk</h1>
+        <div class='subtitle'>Kategori: {$namaKategori} | Tanggal: " . date('d-m-Y H:i') . "</div>
+    </div>
+    
+    <div class='no-print'>
+        <button class='btn-print' onclick='window.print()'>🖨️ Cetak / Save as PDF</button>
+        <p style='margin-top:10px; color:#7f8c8d; font-size:13px;'>
+            Klik tombol di atas, lalu pilih <strong>\"Save as PDF\"</strong> sebagai printer
+        </p>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style='width:50px;'>ID</th>
+                <th>Nama Produk</th>
+                <th style='width:150px;'>Harga</th>
+                <th style='width:80px;'>Stok</th>
+                <th style='width:120px;'>Kategori</th>
+            </tr>
+        </thead>
+        <tbody>";
+        
+        foreach ($rows as $r) {
+            $html .= "<tr>
+                <td>{$r['id']}</td>
+                <td>" . htmlspecialchars($r['nama_produk']) . "</td>
+                <td>Rp " . number_format($r['harga'], 0, ',', '.') . "</td>
+                <td style='text-align:center;'>{$r['stok']}</td>
+                <td>" . htmlspecialchars($r['nama_kategori']) . "</td>
+            </tr>";
+        }
+        
+        $html .= "</tbody>
+    </table>
+</body>
+</html>";
+
+        // Bersihkan output buffer
+        if (ob_get_length()) ob_end_clean();
+        
+        // Output HTML
+        header("Content-Type: text/html; charset=UTF-8");
+        echo $html;
+
+        $stmt->close();
+        $conn->close();
+        exit();
     }
 
     $stmt->close();
@@ -274,17 +322,18 @@ function filterGrid(){
 }
 function exportData(type){
   const kategori = document.getElementById('kategori').value;
-  if(kategori === 'all'){ alert('⚠️ Pilih kategori dulu sebelum export!'); return; }
+  if(kategori === 'all'){
+    alert('⚠️ Silakan pilih salah satu kategori terlebih dahulu sebelum melakukan export!');
+    return;
+  }
   window.location.href = '?action=export_' + type + '&kategori=' + encodeURIComponent(kategori);
 }
 </script>
 </body>
 </html>
 <?php
-// Footer opsional (satu kali)
-$footerPath = __DIR__ . "/../components/footer.php";
-if (file_exists($footerPath)) include_once $footerPath;
-
-// Tutup koneksi
-$conn->close();
-?>
+// Tutup koneksi database jika ada
+if (isset($conn) && $conn !== null) {
+  $conn->close();
+}
+?>    
