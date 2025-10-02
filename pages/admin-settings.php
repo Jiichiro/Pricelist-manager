@@ -1,16 +1,5 @@
 <?php
-
-
-// Koneksi database
-$host = "localhost";
-$user = "root"; // sesuaikan
-$pass = "";     // sesuaikan
-$db   = "pricelist_manager";
-$conn = new mysqli($host, $user, $pass, $db);
-
-if ($conn->connect_error) {
-    die("Koneksi gagal: " . $conn->connect_error);
-}
+require_once __DIR__ . '/../logic/database/connect.php';
 
 // Pastikan user sudah login
 if (!isset($_SESSION['username'])) {

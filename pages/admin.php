@@ -16,8 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $success = 0;
         foreach ($data as $row) {
             if (empty($row['nama']) || empty($row['harga'])) continue;
-            $stmt = $conn->prepare("INSERT INTO produk(nama_produk,harga) VALUES(?,?)");
-            $stmt->bind_param("ss", $row['nama'], $row['harga']);
+            $stmt = $conn->prepare("INSERT INTO produk(nama_produk,harga,stok) VALUES(?,?,?)");
+            $stmt->bind_param("sss", $row['nama'], $row['harga'], $row['stok']);
             if ($stmt->execute()) $success++;
         }
         echo $success . " items imported";
@@ -28,12 +28,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['importPDF'])) {
         $data = json_decode($_POST['importPDF'], true);
         $success = 0;
+        
         foreach ($data as $row) {
             if (empty($row['nama']) || empty($row['harga'])) continue;
-            $stmt = $conn->prepare("INSERT INTO produk(nama_produk,harga) VALUES(?,?)");
-            $stmt->bind_param("ss", $row['nama'], $row['harga']);
+            
+            // Tambahkan default stok jika tidak ada
+            $stok = isset($row['stok']) ? $row['stok'] : '0';
+            
+            $stmt = $conn->prepare("INSERT INTO produk(nama_produk, harga, stok) VALUES(?, ?, ?)");
+            $stmt->bind_param("sss", $row['nama'], $row['harga'], $stok);
+            
             if ($stmt->execute()) $success++;
         }
+        
         echo $success . " items imported";
         exit;
     }
@@ -130,6 +137,7 @@ body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
                     <th>No</th>
                     <th>Item</th>
                     <th>Price</th>
+                    <th>Stok</th>
                     <th>Action</th>
                 </tr>
                 <?php foreach($produkList as $index => $p): ?>
@@ -137,6 +145,7 @@ body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
                     <td><?= $index + 1 ?></td>
                     <td><?= htmlspecialchars($p['nama_produk']) ?></td>
                     <td><?= htmlspecialchars($p['harga']) ?></td>
+                    <td><?= htmlspecialchars($p['stok']) ?></td>
                     <td class="actions">
                         <button class="edit" onclick="openEditModal(this)">Edit</button>
                         <button class="delete" onclick="deleteItem(this)">Delete</button>
@@ -314,7 +323,8 @@ function importExcel(input) {
             if(rows[i][1] && rows[i][2]) {
                 importData.push({
                     nama: rows[i][1].toString(),
-                    harga: rows[i][2].toString()
+                    harga: rows[i][2].toString(),
+                    stok: rows[i][3].toString()
                 });
             }
         }
@@ -343,18 +353,50 @@ function importPDF(input) {
     let file = input.files[0];
     if (!file) return;
     
+    // Validasi tipe file
+    if (file.type !== 'application/pdf') {
+        alert('Harap upload file PDF yang valid');
+        input.value = '';
+        return;
+    }
+    
     let reader = new FileReader();
+    
     reader.onload = function(e) {
         let typedarray = new Uint8Array(e.target.result);
         
         pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
             let maxPages = pdf.numPages;
-            let allText = '';
             
             let getPageText = function(pageNum) {
                 return pdf.getPage(pageNum).then(function(page) {
                     return page.getTextContent().then(function(textContent) {
-                        return textContent.items.map(item => item.str).join(' ');
+                        // Pertahankan struktur baris berdasarkan posisi Y
+                        let lastY = null;
+                        let lines = [];
+                        let currentLine = '';
+                        
+                        textContent.items.forEach(item => {
+                            let currentY = item.transform[5];
+                            
+                            // Jika Y berbeda (baris baru), simpan baris sebelumnya
+                            if (lastY !== null && Math.abs(lastY - currentY) > 5) {
+                                if (currentLine.trim()) {
+                                    lines.push(currentLine.trim());
+                                }
+                                currentLine = item.str;
+                            } else {
+                                currentLine += (currentLine ? ' ' : '') + item.str;
+                            }
+                            lastY = currentY;
+                        });
+                        
+                        // Jangan lupa baris terakhir
+                        if (currentLine.trim()) {
+                            lines.push(currentLine.trim());
+                        }
+                        
+                        return lines.join('\n');
                     });
                 });
             };
@@ -365,29 +407,58 @@ function importPDF(input) {
             }
             
             Promise.all(promises).then(function(texts) {
-                allText = texts.join(' ');
+                let allText = texts.join('\n');
+                let lines = allText.split('\n');
                 
-                // Parse text to extract item and price
                 let importData = [];
-                let lines = allText.split(/\s+/);
                 
-                // Find pattern: number, item name, price
+                // Parse setiap baris
                 for(let i = 0; i < lines.length; i++) {
-                    if(/^\d+$/.test(lines[i])) {
-                        let nama = lines[i+1];
-                        let harga = lines[i+2];
-                        
-                        if(nama && harga && !/^(No|Item|Price|Action)$/i.test(nama)) {
-                            importData.push({
-                                nama: nama,
-                                harga: harga
-                            });
+                    let line = lines[i].trim();
+                    
+                    // Skip baris kosong atau header
+                    if (!line || /^(No|Item|Price|Stock|Stok|Action|Harga|Nama)/i.test(line)) {
+                        continue;
+                    }
+                    
+                    // Pattern: No NamaProduk Harga Stok
+                    // Contoh: "1 Laptop Gaming 5000000 10"
+                    let parts = line.split(/\s+/);
+                    
+                    // Minimal harus ada 4 bagian (no, nama, harga, stok)
+                    if (parts.length >= 4) {
+                        // Cek apakah bagian pertama adalah nomor
+                        if (/^\d+$/.test(parts[0])) {
+                            // Ambil harga (dari belakang ke-2) dan stok (paling belakang)
+                            let stokStr = parts[parts.length - 1];
+                            let hargaStr = parts[parts.length - 2];
+                            
+                            // Validasi harga dan stok adalah angka
+                            let harga = parseFloat(hargaStr.replace(/[^\d.]/g, ''));
+                            let stok = parseInt(stokStr.replace(/[^\d]/g, ''));
+                            
+                            // Nama adalah semua bagian di antara nomor dan harga
+                            let nama = parts.slice(1, -2).join(' ');
+                            
+                            // Validasi data lengkap dan valid
+                            if (nama && nama.length > 0 && !isNaN(harga) && harga > 0 && !isNaN(stok) && stok >= 0) {
+                                importData.push({
+                                    nama: nama,
+                                    harga: harga.toString(),
+                                    stok: stok.toString()
+                                });
+                            }
                         }
                     }
                 }
                 
                 if(importData.length === 0) {
-                    alert("No valid data found in PDF file");
+                    alert("Tidak ada data valid yang ditemukan di file PDF.\n\nPastikan format PDF sesuai:\nNo | Nama Produk | Harga | Stok");
+                    return;
+                }
+                
+                // Konfirmasi sebelum import
+                if(!confirm(`Ditemukan ${importData.length} item. Lanjutkan import?`)) {
                     return;
                 }
                 
@@ -395,14 +466,36 @@ function importPDF(input) {
                 formData.append("importPDF", JSON.stringify(importData));
                 
                 fetch("", {method:"POST", body:formData})
-                .then(res=>res.text())
-                .then(res=>{
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error('Server error: ' + res.status);
+                    }
+                    return res.text();
+                })
+                .then(res => {
                     alert(res);
                     location.reload();
+                })
+                .catch(err => {
+                    console.error('Error saat upload:', err);
+                    alert('Gagal mengupload data: ' + err.message);
                 });
+            })
+            .catch(err => {
+                console.error('Error parsing PDF:', err);
+                alert('Gagal membaca teks dari PDF');
             });
+        })
+        .catch(err => {
+            console.error('Error loading PDF:', err);
+            alert('Gagal memuat file PDF. Pastikan file tidak rusak.');
         });
     };
+    
+    reader.onerror = function() {
+        alert('Gagal membaca file');
+    };
+    
     reader.readAsArrayBuffer(file);
     input.value = '';
 }

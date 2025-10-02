@@ -19,7 +19,7 @@
     <?php if ($_SESSION['username']) { ?>
       <div class="user-profile">
         <img src="https://via.placeholder.com/35" alt="User" />
-        <span class="username"><?php echo $_SESSION['username'] ?> ▾</span>
+        <span class="username"><?php echo $_SESSION['name'] ?> ▾</span>
 
         <!-- Dropdown Menu -->
         <ul class="dropdown-menu">

@@ -227,7 +227,7 @@ if (!isset($_SESSION['username'])) {
   <div class="bottom-section">
     <div class="user-info">
       <span class="sidebar-text">
-        <?php echo $_SESSION['username'] ?? 'Guest'; ?>
+        <?php echo $_SESSION['name'] ?? 'Guest'; ?>
       </span>
       <a href="./logic/auth/logout.php" class="logout-btn">
         🚪 <span class="sidebar-text">Logout</span>
