@@ -56,6 +56,7 @@ if (!isset($_SESSION['username'])) {
     font-size: 1.25rem;
     font-weight: 800;
     background: linear-gradient(to right, #818cf8, #c084fc);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     transition: all 0.3s ease;
@@ -215,7 +216,7 @@ if (!isset($_SESSION['username'])) {
         </a>
       </li>
       <li>
-        <a href="?page=super-admin" class="menu-item">
+        <a href="?page=admin-setting" class="menu-item">
           <span class="icon-wiggle">⚙️</span>
           <span class="sidebar-text">Setting</span>
         </a>

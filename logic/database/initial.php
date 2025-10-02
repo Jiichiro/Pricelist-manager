@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . "../connect.php";
+require_once __DIR__ . "/connect.php";
 
 // Create database if not exists
 $sql = "CREATE DATABASE IF NOT EXISTS " . DB_NAME;
@@ -45,55 +45,58 @@ if ($conn->query("CREATE TABLE IF NOT EXISTS produk (
     die("Error creating table: " . $conn->error);
 }
 
-// Insert dummy data for users
-// Insert dummy data for users only if table is empty
-$result = $conn->query("SELECT COUNT(*) as count FROM users");
-$row = $result->fetch_assoc();
-if ($row['count'] == 0) {
-    $conn->query("INSERT INTO users (name, username, password, role) VALUES
-        ('Admin User', 'admin', '" . password_hash('admin123', PASSWORD_DEFAULT) . "', 'super_admin'),
-        ('Sales User', 'sales', '" . password_hash('sales123', PASSWORD_DEFAULT) . "', 'penjualan')
-    ");
-}
 
-// Insert dummy data for kategori only if table is empty
-$result = $conn->query("SELECT COUNT(*) as count FROM kategori");
-$row = $result->fetch_assoc();
-if ($row['count'] == 0) {
-    $conn->query("INSERT INTO kategori (nama_kategori, deskripsi) VALUES
-        ('Elektronik', 'Produk elektronik'),
-        ('Pakaian', 'Produk pakaian')
-    ");
-}
-
-// Get kategori IDs
-$kategori_ids = [];
-$result = $conn->query("SELECT id FROM kategori");
-while ($row = $result->fetch_assoc()) {
-    $kategori_ids[] = $row['id'];
-}
-
-// Insert dummy data for produk (10 products) only if table is empty
-$result = $conn->query("SELECT COUNT(*) as count FROM produk");
-$row = $result->fetch_assoc();
-if ($row['count'] == 0 && !empty($kategori_ids)) {
-    for ($i = 1; $i <= 10; $i++) {
-        $nama_produk = "Produk Dummy $i";
-        $id_kategori = $kategori_ids[array_rand($kategori_ids)];
-        $harga = rand(10000, 100000);
-        $stok = rand(1, 50);
-        $deskripsi = "Deskripsi produk dummy ke-$i";
-        $gambar_url = "produk$i.jpg";
-        $conn->query("INSERT INTO produk (nama_produk, id_kategori, harga, stok, deskripsi, gambar_url)
-            VALUES (
-                '$nama_produk',
-                $id_kategori,
-                $harga,
-                $stok,
-                '$deskripsi',
-                '$gambar_url'
-            )
+if (!IS_PRODUCTION) {
+    // Insert dummy data for users
+    // Insert dummy data for users only if table is empty
+    $result = $conn->query("SELECT COUNT(*) as count FROM users");
+    $row = $result->fetch_assoc();
+    if ($row['count'] == 0) {
+        $conn->query("INSERT INTO users (name, username, password, role) VALUES
+            ('Admin User', 'admin', '" . password_hash('admin123', PASSWORD_DEFAULT) . "', 'super_admin'),
+            ('Sales User', 'sales', '" . password_hash('sales123', PASSWORD_DEFAULT) . "', 'penjualan')
         ");
+    }
+
+    // Insert dummy data for kategori only if table is empty
+    $result = $conn->query("SELECT COUNT(*) as count FROM kategori");
+    $row = $result->fetch_assoc();
+    if ($row['count'] == 0) {
+        $conn->query("INSERT INTO kategori (nama_kategori, deskripsi) VALUES
+            ('Elektronik', 'Produk elektronik'),
+            ('Pakaian', 'Produk pakaian')
+        ");
+    }
+
+    // Get kategori IDs
+    $kategori_ids = [];
+    $result = $conn->query("SELECT id FROM kategori");
+    while ($row = $result->fetch_assoc()) {
+        $kategori_ids[] = $row['id'];
+    }
+
+    // Insert dummy data for produk (10 products) only if table is empty
+    $result = $conn->query("SELECT COUNT(*) as count FROM produk");
+    $row = $result->fetch_assoc();
+    if ($row['count'] == 0 && !empty($kategori_ids)) {
+        for ($i = 1; $i <= 10; $i++) {
+            $nama_produk = "Produk Dummy $i";
+            $id_kategori = $kategori_ids[array_rand($kategori_ids)];
+            $harga = rand(10000, 100000);
+            $stok = rand(1, 50);
+            $deskripsi = "Deskripsi produk dummy ke-$i";
+            $gambar_url = "produk$i.jpg";
+            $conn->query("INSERT INTO produk (nama_produk, id_kategori, harga, stok, deskripsi, gambar_url)
+                VALUES (
+                    '$nama_produk',
+                    $id_kategori,
+                    $harga,
+                    $stok,
+                    '$deskripsi',
+                    '$gambar_url'
+                )
+            ");
+        }
     }
 }
 
