@@ -1,0 +1,16 @@
+{
+    "name": "gitech/pricelist-manager",
+    "description": "aplikasi untuk management pricelist dengan role base login",
+    "type": "website",
+    "require": {
+        "dompdf/dompdf": "^3.1",
+        "phpoffice/phpspreadsheet": "^5.1",
+        "smalot/pdfparser": "^2.12"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Andy"
+        }
+    ]
+}
