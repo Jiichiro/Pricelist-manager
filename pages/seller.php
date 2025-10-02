@@ -336,8 +336,4 @@ function exportData(type){
 if (isset($conn) && $conn !== null) {
   $conn->close();
 }
-<<<<<<< HEAD
-?>    
-=======
 ?>
->>>>>>> 97510ffe2e5d1f7643028329fa8ebcef12882f56
