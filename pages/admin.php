@@ -10,6 +10,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // Import Excel
+    if (isset($_POST['importExcel'])) {
+        $data = json_decode($_POST['importExcel'], true);
+        $success = 0;
+        foreach ($data as $row) {
+            if (empty($row['nama']) || empty($row['harga'])) continue;
+            $stmt = $conn->prepare("INSERT INTO produk(nama_produk,harga) VALUES(?,?)");
+            $stmt->bind_param("ss", $row['nama'], $row['harga']);
+            if ($stmt->execute()) $success++;
+        }
+        echo $success . " items imported";
+        exit;
+    }
+
+    // Import PDF (converted to text)
+    if (isset($_POST['importPDF'])) {
+        $data = json_decode($_POST['importPDF'], true);
+        $success = 0;
+        foreach ($data as $row) {
+            if (empty($row['nama']) || empty($row['harga'])) continue;
+            $stmt = $conn->prepare("INSERT INTO produk(nama_produk,harga) VALUES(?,?)");
+            $stmt->bind_param("ss", $row['nama'], $row['harga']);
+            if ($stmt->execute()) $success++;
+        }
+        echo $success . " items imported";
+        exit;
+    }
+
     // Add/Edit
     $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
     $nama = $_POST['nama'] ?? "";
@@ -59,12 +87,17 @@ body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
 .export-excel:hover{background:#229954;}
 .export-pdf{background:#e74c3c;}
 .export-pdf:hover{background:#c0392b;}
+.import-excel{background:#3498db;}
+.import-excel:hover{background:#2980b9;}
+.import-pdf{background:#9b59b6;}
+.import-pdf:hover{background:#8e44ad;}
 .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;}
 .modal-content{background:#fff;padding:20px;border-radius:8px;width:350px;}
 .modal-content h4{margin-top:0;}
 .modal-content input{width:100%;padding:8px;margin:5px 0 10px;border:1px solid #ccc;border-radius:4px;}
 .modal-content button{padding:8px 12px;border:none;border-radius:8px;cursor:pointer;}
 .close{float:right;font-size:20px;cursor:pointer;}
+.hidden{display:none;}
 </style>
 
 <div class="dashboard-container">
@@ -82,10 +115,15 @@ body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
                     <div class="export-buttons">
                         <button class="export-excel" onclick="exportToExcel()">📊 Export Excel</button>
                         <button class="export-pdf" onclick="exportToPDF()">📄 Export PDF</button>
+                        <button class="import-excel" onclick="document.getElementById('importExcelFile').click()">📥 Import Excel</button>
+                        <button class="import-pdf" onclick="document.getElementById('importPDFFile').click()">📥 Import PDF</button>
                     </div>
                     <button onclick="openModal()">+ Add Item</button>
                 </div>
             </div>
+
+            <input type="file" id="importExcelFile" class="hidden" accept=".xlsx,.xls" onchange="importExcel(this)">
+            <input type="file" id="importPDFFile" class="hidden" accept=".pdf" onchange="importPDF(this)">
 
             <table class="price-table" id="priceTable">
                 <tr>
@@ -125,6 +163,7 @@ body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
 // Search
@@ -200,18 +239,16 @@ function exportToExcel() {
     let table = document.getElementById("priceTable");
     let wb = XLSX.utils.book_new();
     
-    // Ambil data yang terlihat saja (tidak termasuk yang di-filter)
     let data = [];
     let rows = table.querySelectorAll("tr");
     
     rows.forEach((row, index) => {
-        if(row.style.display === "none") return; // Skip hidden rows
+        if(row.style.display === "none") return;
         
         let rowData = [];
         let cells = row.querySelectorAll("th, td");
         
         cells.forEach((cell, cellIndex) => {
-            // Skip kolom Action (kolom terakhir)
             if(cellIndex < cells.length - 1) {
                 rowData.push(cell.textContent);
             }
@@ -230,19 +267,17 @@ function exportToPDF() {
     const { jsPDF } = window.jspdf;
     let doc = new jsPDF();
     
-    // Ambil data yang terlihat saja
     let rows = [];
     let table = document.getElementById("priceTable");
     let tableRows = table.querySelectorAll("tr");
     
     tableRows.forEach((row, index) => {
-        if(row.style.display === "none") return; // Skip hidden rows
+        if(row.style.display === "none") return;
         
         let rowData = [];
         let cells = row.querySelectorAll("th, td");
         
         cells.forEach((cell, cellIndex) => {
-            // Skip kolom Action (kolom terakhir)
             if(cellIndex < cells.length - 1) {
                 rowData.push(cell.textContent);
             }
@@ -260,6 +295,120 @@ function exportToPDF() {
     
     doc.save("price_list.pdf");
 }
+
+// Import Excel
+function importExcel(input) {
+    let file = input.files[0];
+    if (!file) return;
+    
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        let data = new Uint8Array(e.target.result);
+        let workbook = XLSX.read(data, {type: 'array'});
+        let firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        let rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+        
+        // Skip header row
+        let importData = [];
+        for(let i = 1; i < rows.length; i++) {
+            if(rows[i][1] && rows[i][2]) {
+                importData.push({
+                    nama: rows[i][1].toString(),
+                    harga: rows[i][2].toString()
+                });
+            }
+        }
+        
+        if(importData.length === 0) {
+            alert("No valid data found in Excel file");
+            return;
+        }
+        
+        let formData = new FormData();
+        formData.append("importExcel", JSON.stringify(importData));
+        
+        fetch("", {method:"POST", body:formData})
+        .then(res=>res.text())
+        .then(res=>{
+            alert(res);
+            location.reload();
+        });
+    };
+    reader.readAsArrayBuffer(file);
+    input.value = '';
+}
+
+// Import PDF
+function importPDF(input) {
+    let file = input.files[0];
+    if (!file) return;
+    
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        let typedarray = new Uint8Array(e.target.result);
+        
+        pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+            let maxPages = pdf.numPages;
+            let allText = '';
+            
+            let getPageText = function(pageNum) {
+                return pdf.getPage(pageNum).then(function(page) {
+                    return page.getTextContent().then(function(textContent) {
+                        return textContent.items.map(item => item.str).join(' ');
+                    });
+                });
+            };
+            
+            let promises = [];
+            for(let i = 1; i <= maxPages; i++) {
+                promises.push(getPageText(i));
+            }
+            
+            Promise.all(promises).then(function(texts) {
+                allText = texts.join(' ');
+                
+                // Parse text to extract item and price
+                let importData = [];
+                let lines = allText.split(/\s+/);
+                
+                // Find pattern: number, item name, price
+                for(let i = 0; i < lines.length; i++) {
+                    if(/^\d+$/.test(lines[i])) {
+                        let nama = lines[i+1];
+                        let harga = lines[i+2];
+                        
+                        if(nama && harga && !/^(No|Item|Price|Action)$/i.test(nama)) {
+                            importData.push({
+                                nama: nama,
+                                harga: harga
+                            });
+                        }
+                    }
+                }
+                
+                if(importData.length === 0) {
+                    alert("No valid data found in PDF file");
+                    return;
+                }
+                
+                let formData = new FormData();
+                formData.append("importPDF", JSON.stringify(importData));
+                
+                fetch("", {method:"POST", body:formData})
+                .then(res=>res.text())
+                .then(res=>{
+                    alert(res);
+                    location.reload();
+                });
+            });
+        });
+    };
+    reader.readAsArrayBuffer(file);
+    input.value = '';
+}
+
+// Set PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 </script>
 
 </html>
