@@ -1,0 +1,12 @@
+{
+    "name": "marketing/penjualan",
+    "authors": [
+        {
+            "name": "rvlinadwi",
+            "email": "rvlinadwi@gmail.com"
+        }
+    ],
+    "require": {
+        "dompdf/dompdf": "^3.1"
+    }
+}
