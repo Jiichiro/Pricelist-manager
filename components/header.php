@@ -1,8 +1,26 @@
+<?php
+// Mulai session di awal file
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Fallback default jika session kosong
+if (!isset($_SESSION['username'])) {
+    $_SESSION['username'] = "Guest";
+    $_SESSION['name'] = "Guest";
+}
+?>
+
 <header>
   <div class="header-container">
     <!-- Logo -->
     <div class="logo">
       <h1>📊 Pricelist Manager</h1>
+    </div>
+
+    <!-- Hamburger (Mobile Only) -->
+    <div class="hamburger" onclick="document.querySelector('.nav-links').classList.toggle('active')">
+      ☰
     </div>
 
     <!-- Navigation Menu -->
@@ -16,23 +34,22 @@
       </ul>
     </nav>
 
-    <?php if ($_SESSION['username']) { ?>
-      <div class="user-profile">
-        <img src="https://via.placeholder.com/35" alt="User" />
-        <span class="username"><?php echo $_SESSION['name'] ?> ▾</span>
+    <!-- User Profile with Dropdown -->
+    <div class="user-profile">
+      <img src="https://via.placeholder.com/35" alt="User" />
+      <span class="username"><?php echo htmlspecialchars($_SESSION['name']); ?> ▾</span>
 
-        <!-- Dropdown Menu -->
-        <ul class="dropdown-menu">
+      <!-- Dropdown Menu -->
+      <ul class="dropdown-menu">
+        <?php if ($_SESSION['username'] !== "Guest") { ?>
           <li><a href="#">Profil</a></li>
           <li><a href="#">Pengaturan</a></li>
           <li><a href="./logic/auth/logout.php">Logout</a></li>
-        </ul>
-      </div>
-    <?php } else { ?>
-      <p> login </p>
-    <?php } ?>
-    <!-- User Profile with Dropdown -->
-
+        <?php } else { ?>
+          <li><a href="login.php">Login</a></li>
+        <?php } ?>
+      </ul>
+    </div>
   </div>
 </header>
 
@@ -48,7 +65,7 @@
   }
 
   .header-container {
-    max-width: 1200px;
+    max-width: 1280px;
     margin: auto;
     display: flex;
     align-items: center;
@@ -139,5 +156,78 @@
   /* Show dropdown on hover */
   .user-profile:hover .dropdown-menu {
     display: flex;
+  }
+
+  /* Hamburger (mobile only) */
+  .hamburger {
+    display: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: #f8fafc;
+  }
+
+  /* 🔹 Breakpoints */
+  /* Laptop (≤1164px) */
+  @media (max-width: 1164px) {
+    .header-container {
+      max-width: 1164px;
+      gap: 15px;
+    }
+    nav ul {
+      gap: 18px;
+    }
+  }
+
+  /* Tablet (≤768px) */
+  @media (max-width: 768px) {
+    .header-container {
+      max-width: 768px;
+    }
+    nav ul {
+      gap: 12px;
+    }
+    nav ul li a {
+      font-size: 13px;
+    }
+    .username {
+      font-size: 13px;
+    }
+  }
+
+  /* Mobile (≤480px) */
+  @media (max-width: 480px) {
+    .header-container {
+      max-width: 480px;
+    }
+
+    nav {
+      position: absolute;
+      top: 60px;
+      left: 0;
+      width: 100%;
+    }
+
+    .nav-links {
+      flex-direction: column;
+      background: #1e293b;
+      padding: 15px;
+      display: none;
+    }
+
+    .nav-links.active {
+      display: flex;
+    }
+
+    .hamburger {
+      display: block;
+    }
+
+    nav ul li {
+      margin: 10px 0;
+    }
+
+    .user-profile {
+      padding: 5px 10px;
+    }
   }
 </style>

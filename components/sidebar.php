@@ -6,15 +6,12 @@ if (!isset($_SESSION['username'])) {
 }
 ?>
 
-<!-- Tailwind CDN -->
-<!-- <script src="https://cdn.tailwindcss.com"></script> -->
-
 <style>
+  /* ===== Sidebar Default (Mobile First) ===== */
   #sidebar {
     background: linear-gradient(to bottom, #0f172a, #1e293b, #0f172a);
     color: white;
-    width: 16rem;
-    /* 64 */
+    width: 14rem;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -30,17 +27,10 @@ if (!isset($_SESSION['username'])) {
 
   #sidebar.collapsed {
     width: 5rem;
-    /* 20 */
   }
 
   #sidebar.hidden-mobile {
     transform: translateX(-100%);
-  }
-
-  @media (min-width: 768px) {
-    #sidebar {
-      transform: translateX(0);
-    }
   }
 
   /* === Sidebar Top Section === */
@@ -85,7 +75,6 @@ if (!isset($_SESSION['username'])) {
 
   .menu-item:hover {
     background-color: #6366f1;
-    /* Indigo */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
 
@@ -145,17 +134,30 @@ if (!isset($_SESSION['username'])) {
     display: block;
   }
 
-  @media (min-width: 768px) {
-    .hamburger-btn {
-      display: none;
-    }
-  }
-
   .collapse-btn {
     display: none;
   }
 
+  /* === Main Content Default === */
+  .main-content {
+    margin-left: 0;
+    padding: 1rem;
+    transition: margin-left 0.3s ease;
+  }
+
+  /* ===== Breakpoints ===== */
+
+  /* Tablet (>=768px) */
   @media (min-width: 768px) {
+    #sidebar {
+      width: 15rem;
+      transform: translateX(0);
+    }
+
+    .hamburger-btn {
+      display: none;
+    }
+
     .collapse-btn {
       display: flex;
       position: fixed;
@@ -169,21 +171,52 @@ if (!isset($_SESSION['username'])) {
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
 
+    .main-content {
+      margin-left: 15rem;
+    }
+
     #sidebar.collapsed+.collapse-btn {
       left: 5rem;
+    }
+
+    #sidebar.collapsed~.main-content {
+      margin-left: 5rem;
+    }
+  }
+
+  /* Laptop (>=1164px) */
+  @media (min-width: 1164px) {
+    #sidebar {
+      width: 16rem;
+    }
+
+    .main-content {
+      margin-left: 16rem;
+    }
+
+    #sidebar.collapsed~.main-content {
+      margin-left: 5rem;
+    }
+  }
+
+  /* Desktop (>=1280px) */
+  @media (min-width: 1280px) {
+    #sidebar {
+      width: 18rem;
+    }
+
+    .main-content {
+      margin-left: 18rem;
+    }
+
+    #sidebar.collapsed~.main-content {
+      margin-left: 5rem;
     }
   }
 
   @keyframes wiggle {
-
-    0%,
-    100% {
-      transform: rotate(-8deg);
-    }
-
-    50% {
-      transform: rotate(8deg);
-    }
+    0%,100% { transform: rotate(-8deg); }
+    50% { transform: rotate(8deg); }
   }
 
   .icon-wiggle:hover {
@@ -192,7 +225,6 @@ if (!isset($_SESSION['username'])) {
 </style>
 
 <!-- Sidebar -->
-<link rel="stylesheet" href="styles.css">
 <aside id="sidebar">
   <div class="top-section">
     <div class="header">
@@ -242,6 +274,7 @@ if (!isset($_SESSION['username'])) {
 <!-- Desktop Collapse Button -->
 <button onclick="collapseSidebar()" class="collapse-btn">⇔</button>
 
+
 <script>
   function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
@@ -256,7 +289,6 @@ if (!isset($_SESSION['username'])) {
     const logo = document.getElementById("sidebarLogo");
 
     sidebar.classList.toggle("collapsed");
-
     texts.forEach(el => el.classList.toggle("hidden"));
     logo.classList.toggle("hidden");
   }
