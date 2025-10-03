@@ -1,66 +1,97 @@
-<style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <style>
     body {
-        min-height: 100vh;
-        align-content: center;
-    }
-    .login-container {
-        background-color: white;
-        padding: 40px;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        width: 100%;
-        max-width: 400px;
-        text-align: center;
-        margin: auto;
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
     }
 
-    .login-container h1 {
-        margin-bottom: 24px;
-        color: #4e54c8;
+    .login-card {
+      background: #fff;
+      padding: 30px 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      margin: 10px 20px 10px 20px;
     }
 
-    .login-container label {
-        display: block;
-        text-align: left;
-        margin-bottom: 6px;
-        font-weight: bold;
+    .login-card h2 {
+      margin-bottom: 20px;
+      color: #333;
     }
 
-    .login-container input[type="text"],
-    .login-container input[type="password"] {
-        width: 100%;
-        padding: 12px;
-        margin-bottom: 20px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        box-sizing: border-box;
+    .login-card input {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
     }
 
-    .login-container input[type="submit"] {
-        background-color: #4e54c8;
-        color: white;
-        padding: 12px 20px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
-        transition: background-color 0.3s;
+    .login-card input:focus {
+      border-color: #1abc9c;
+      box-shadow: 0 0 4px rgba(26, 188, 156, 0.3);
+      outline: none;
     }
 
-    .login-container input[type="submit"]:hover {
-        background-color: #3c40a0;
+    .login-card button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 15px;
+      background: #1abc9c;
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s ease;
     }
-</style>
 
-<div class="login-container">
-    <h1>Login Page</h1>
-    <form method="POST" action="./logic/auth/login.php">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" required>
+    .login-card button:hover {
+      background: #16a085;
+    }
 
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" required>
+    .login-card a {
+      display: block;
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: #3498db;
+      text-decoration: none;
+    }
 
-        <input type="submit" value="Login">
+    .login-card a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .login-card {
+        padding: 20px 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h2>Login</h2>
+    <form method="POST" action="logic/auth/login.php">
+      <input type="text" name="username" placeholder="Username" required>
+      <input type="password" name="password" placeholder="Password" required>
+      <button type="submit">Sign In</button>
     </form>
-</div>
+    <a href="#">Forgot password?</a>
+  </div>
+</body>
+</html>

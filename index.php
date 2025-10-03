@@ -1,8 +1,9 @@
 <?php
 session_start();
-require __DIR__ . '/vendor/autoload.php';
+include(__DIR__ . '/vendor/autoload.php');
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/logic/database/connect.php';
+require_once __DIR__ . '/logic/database/initial.php';
 
 $routes = [
     'login'          => ['file' => 'pages/login.php',           'role' => null],
