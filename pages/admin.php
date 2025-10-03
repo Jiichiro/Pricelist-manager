@@ -76,20 +76,20 @@ if ($result) {
 <style>
 body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
 .dashboard-container{display:flex;}
-.main-content{margin:20px 40px 20px 280px;padding:20px;width:100%;}
+.main-content{margin:20px 40px 20px 280px;padding:20px;width:100%;transition:margin 0.3s;}
 .card{background:#fff;border-radius:8px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:20px;}
 .card h3{margin:0 0 15px;}
-.price-table{width:100%;border-collapse:collapse;}
-.price-table th,.price-table td{padding:12px;border:1px solid #ddd;text-align:center;border-radius:4px;}
+.price-table{width:100%;border-collapse:collapse;table-layout:auto;}
+.price-table th,.price-table td{padding:12px;border:1px solid #ddd;text-align:center;border-radius:4px;font-size:14px;}
 .price-table th{background:#1abc9c;color:#fff;}
-.actions button{margin:0 3px;padding:5px 10px;border:none;border-radius:4px;cursor:pointer;}
+.actions button{margin:0 3px;padding:5px 10px;border:none;border-radius:4px;cursor:pointer;font-size:13px;}
 .actions .edit{background:#3498db;color:#fff;}
 .actions .delete{background:#e74c3c;color:#fff;}
 .search-add{display:flex;justify-content:space-between;margin-bottom:15px;align-items:center;flex-wrap:wrap;gap:10px;}
-.search-add input{padding:8px;width:200px;border:1px solid #ccc;border-radius:4px;}
+.search-add input{padding:8px;min-width:160px;border:1px solid #ccc;border-radius:4px;}
 .search-add button{background:#1abc9c;color:#fff;padding:8px 12px;border:none;border-radius:4px;cursor:pointer;}
-.export-buttons{display:flex;gap:8px;}
-.export-buttons button{padding:8px 12px;border:none;border-radius:4px;cursor:pointer;color:#fff;font-weight:bold;}
+.export-buttons{display:flex;gap:8px;flex-wrap:wrap;}
+.export-buttons button{padding:8px 12px;border:none;border-radius:4px;cursor:pointer;color:#fff;font-weight:bold;font-size:13px;}
 .export-excel{background:#27ae60;}
 .export-excel:hover{background:#229954;}
 .export-pdf{background:#e74c3c;}
@@ -99,12 +99,38 @@ body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
 .import-pdf{background:#9b59b6;}
 .import-pdf:hover{background:#8e44ad;}
 .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;}
-.modal-content{background:#fff;padding:20px;border-radius:8px;width:350px;}
-.modal-content h4{margin-top:0;}
-.modal-content input{width:100%;padding:8px;margin:5px 0 10px;border:1px solid #ccc;border-radius:4px;}
-.modal-content button{padding:8px 12px;border:none;border-radius:8px;cursor:pointer;}
-.close{float:right;font-size:20px;cursor:pointer;}
+.modal-content{background:#fff;padding:25px;border-radius:8px;width:90%;max-width:400px;transition:all 0.3s;}
+.modal-content h4{margin-top:0;font-size:18px;}
+.modal-content input{width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:6px;font-size:14px;}
+.modal-content button{padding:10px 14px;border:none;border-radius:8px;cursor:pointer;font-size:14px;}
+.close{float:right;font-size:22px;cursor:pointer;}
 .hidden{display:none;}
+
+/* ================= Responsive ================= */
+
+/* Mobile: up to 480px */
+@media screen and (max-width:480px) {
+    .main-content{margin:20px 10px 20px 10px;padding:15px;}
+    .price-table th,.price-table td{padding:8px;font-size:12px;}
+    .search-add input{width:100%;}
+    .modal-content{padding:20px;width:95%;}
+}
+
+/* Tablet: up to 768px */
+@media screen and (max-width:768px) {
+    .main-content{margin:20px 15px 20px 15px;padding:18px;}
+    .price-table th,.price-table td{padding:10px;font-size:13px;}
+    .modal-content{padding:22px;width:90%;}
+}
+
+/* Laptop: up to 1164px */
+@media screen and (max-width:1164px) {
+    .main-content{margin-left:0;padding:20px;}
+    .price-table th,.price-table td{padding:12px;font-size:14px;}
+    .modal-content{width:400px;}
+}
+
+/* Desktop >1164px tetap default */
 </style>
 
 <div class="dashboard-container">
@@ -132,28 +158,30 @@ body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
             <input type="file" id="importExcelFile" class="hidden" accept=".xlsx,.xls" onchange="importExcel(this)">
             <input type="file" id="importPDFFile" class="hidden" accept=".pdf" onchange="importPDF(this)">
 
-            <table class="price-table" id="priceTable">
-                <tr>
-                    <th>No</th>
-                    <th>Item</th>
-                    <th>Price</th>
-                    <th>Stok</th>
-                    <th>Action</th>
-                </tr>
-                <?php foreach($produkList as $index => $p): ?>
-                <tr data-id="<?= $p['id'] ?>">
-                    <td><?= $index + 1 ?></td>
-                    <td><?= htmlspecialchars($p['nama_produk']) ?></td>
-                    <td><?= htmlspecialchars($p['harga']) ?></td>
-                    <td><?= htmlspecialchars($p['stok']) ?></td>
-                    <td class="actions">
-                        <button class="edit" onclick="openEditModal(this)">Edit</button>
-                        <button class="delete" onclick="deleteItem(this)">Delete</button>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </table>
-        </div>
+            <div class="table-wrapper">
+    <table class="price-table" id="priceTable">
+        <tr>
+            <th>No</th>
+            <th>Item</th>
+            <th>Price</th>
+            <th>Stok</th>
+            <th>Action</th>
+        </tr>
+        <?php foreach($produkList as $index => $p): ?>
+        <tr data-id="<?= $p['id'] ?>">
+            <td><?= $index + 1 ?></td>
+            <td><?= htmlspecialchars($p['nama_produk']) ?></td>
+            <td><?= htmlspecialchars($p['harga']) ?></td>
+            <td><?= htmlspecialchars($p['stok']) ?></td>
+            <td class="actions">
+                <button class="edit" onclick="openEditModal(this)">Edit</button>
+                <button class="delete" onclick="deleteItem(this)">Delete</button>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+</div>
+
     </div>
 </div>
 
