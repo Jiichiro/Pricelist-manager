@@ -68,10 +68,10 @@
   }
 
   .footer-container {
-    max-width: 1200px;
+    max-width: 1280px; /* default desktop */
     margin: auto;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 40px;
   }
 
@@ -135,5 +135,54 @@
 
   .footer-bottom p {
     margin: 5px 0;
+  }
+
+  /* 🔹 Breakpoints */
+  /* Laptop (≤1164px) */
+  @media (max-width: 1164px) {
+    .footer-container {
+      max-width: 1164px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+    }
+  }
+
+  /* Tablet (≤768px) */
+  @media (max-width: 768px) {
+    .footer-container {
+      max-width: 768px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 25px;
+    }
+
+    footer {
+      padding: 40px 15px;
+    }
+
+    .footer-menu h3 {
+      font-size: 15px;
+    }
+
+    .footer-menu ul li {
+      font-size: 13px;
+    }
+  }
+
+  /* Mobile (≤480px) */
+  @media (max-width: 480px) {
+    .footer-container {
+      max-width: 480px;
+      grid-template-columns: 1fr; /* stack jadi 1 kolom */
+      text-align: center;
+    }
+
+    .social-icons {
+      justify-content: center;
+      display: flex;
+    }
+
+    .footer-menu h3 {
+      margin-top: 20px;
+    }
   }
 </style>
