@@ -34,7 +34,7 @@ if ($conn->query("CREATE TABLE IF NOT EXISTS produk (
     id BIGINT(30) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     nama_produk VARCHAR(255) NOT NULL,
     id_kategori BIGINT(30) UNSIGNED,
-    harga DECIMAL(10, 2) NOT NULL,
+    harga DECIMAL(65, 0) NOT NULL,
     stok INT(11) NOT NULL,
     deskripsi TEXT,
     gambar_url VARCHAR(255),
