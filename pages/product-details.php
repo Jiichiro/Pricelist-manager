@@ -32,108 +32,198 @@ if (isset($_GET['productId'])) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Detail Produk</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f4f6f9;
-      color: #333;
-    }
+<style>
+ <style>
+  /* Reset & dasar */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-    header {
-      background: #0d1b2a;
-      /* biru navy gelap */
-      color: white;
-      padding: 15px 30px;
-      text-align: center;
-    }
+  html, body {
+    width: 100%;
+    overflow-x: hidden;
+  }  
 
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f4f6f9;
+    color: #333;
+  }
+
+  header {
+    background: #0d1b2a;
+    color: white;
+    padding: 12px;
+    text-align: center;
+  }
+
+  header h1 {
+    font-size: 18px;
+  }
+
+  .container {
+    max-width: 900px;
+    width: 100%;
+    margin: 20px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  }
+
+  .product-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .product-image {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+
+  .product-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    display: block;
+    margin: 0 auto;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .product-info {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+
+  .product-info h2 {
+    font-size: 20px;
+    margin-top: 10px;
+    color: #0d1b2a;
+  }
+
+  .price {
+    color: #28a745;
+    font-size: 18px;
+    font-weight: bold;
+    margin: 10px 0;
+  }
+
+  .stock {
+    background: #e9ecef;
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: #495057;
+  }
+
+  .desc {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-top: 5px;
+  }
+
+  .btn {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 10px 15px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: 0.3s;
+  }
+
+  .btn-back {
+    background: #0d6efd;
+    color: white;
+  }
+
+  .btn-back:hover {
+    background: #0a58ca;
+  }
+
+  /* 📱 Mobile ≤ 480px */
+  @media (max-width: 480px) {
     header h1 {
-      margin: 0;
-      font-size: 22px;
+      font-size: 16px;
     }
 
     .container {
-      max-width: 900px;
-      margin: 30px auto;
-      background: white;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      max-width: 95%;
+      margin: 10px auto;
+      padding: 15px;
     }
 
+    .product-info h2 {
+      font-size: 18px;
+    }
+
+    .price {
+      font-size: 16px;
+    }
+
+    .desc {
+      font-size: 13px;
+    }
+
+    .btn-back {
+      display: block;
+      width: 100%;
+      text-align: center;
+    }
+  }
+
+  /* 📲 Tablet 481px–768px */
+  @media (min-width: 481px) and (max-width: 768px) {
+    .container {
+      max-width: 90%;
+    }
+
+    .product-info h2 {
+      font-size: 20px;
+    }
+
+    .price {
+      font-size: 18px;
+    }
+  }
+
+  /* 💻 Laptop 769px–1164px */
+  @media (min-width: 769px) and (max-width: 1164px) {
     .product-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 30px;
-      align-items: flex-start;
+      flex-wrap: nowrap;
     }
 
     .product-image {
       flex: 1;
-      text-align: center;
-    }
-
-    .product-image img {
-      max-width: 100%;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
     .product-info {
-      flex: 2;
+      flex: 1;
+      text-align: left;
+    }
+  }
+
+  /* 🖥 Desktop ≥ 1165px */
+  @media (min-width: 1165px) {
+    .product-container {
+      flex-wrap: nowrap;
     }
 
-    .product-info h2 {
-      margin-top: 0;
-      font-size: 26px;
-      color: #0d1b2a;
+    .product-info {
+      text-align: left;
     }
+  }
+</style>
 
-    .price {
-      color: #28a745;
-      /* hijau sama dengan dashboard */
-      font-size: 22px;
-      font-weight: bold;
-      margin: 15px 0;
-    }
 
-    .stock {
-      background: #e9ecef;
-      display: inline-block;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 14px;
-      margin-bottom: 15px;
-      color: #495057;
-    }
-
-    .desc {
-      line-height: 1.6;
-      margin-bottom: 20px;
-    }
-
-    .btn {
-      display: inline-block;
-      margin-top: 10px;
-      padding: 10px 18px;
-      text-decoration: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      transition: 0.3s;
-    }
-
-    .btn-back {
-      background: #0d6efd;
-      /* biru */
-      color: white;
-    }
-
-    .btn-back:hover {
-      background: #0a58ca;
-    }
-  </style>
 </head>
 
 <body>
