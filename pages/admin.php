@@ -1,46 +1,63 @@
 <?php
+// file: produk_full.php
+// Pastikan file ini diletakkan di folder yang sesuai dan koneksi DB benar.
 require __DIR__ . "/../logic/database/connect.php";
 
 // --- Handle Ajax POST ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Delete
+    // Delete (prepared)
     if (isset($_POST['deleteId'])) {
         $id = intval($_POST['deleteId']);
-        echo $conn->query("DELETE FROM produk WHERE id=$id") ? "deleted" : "Error";
+        $stmt = $conn->prepare("DELETE FROM produk WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        echo $stmt->execute() ? "deleted" : "Error";
         exit;
     }
 
-    // Import Excel
+    // Import Excel (JSON payload from client)
     if (isset($_POST['importExcel'])) {
         $data = json_decode($_POST['importExcel'], true);
         $success = 0;
-        foreach ($data as $row) {
-            if (empty($row['nama']) || empty($row['harga'])) continue;
-            $stmt = $conn->prepare("INSERT INTO produk(nama_produk,harga,stok) VALUES(?,?,?)");
-            $stmt->bind_param("sss", $row['nama'], $row['harga'], $row['stok']);
-            if ($stmt->execute()) $success++;
+        if (is_array($data)) {
+            foreach ($data as $row) {
+                $nama = $row['nama'] ?? "";
+                $harga = isset($row['harga']) ? floatval($row['harga']) : 0;
+                $stok = isset($row['stok']) ? intval($row['stok']) : 0;
+                $kategori = isset($row['kategori']) ? intval($row['kategori']) : 0;
+                $deskripsi = $row['deskripsi'] ?? "";
+                $gambar = $row['gambar'] ?? "";
+
+                if ($nama === "" || $harga <= 0) continue;
+
+                $stmt = $conn->prepare("INSERT INTO produk (nama_produk, harga, stok, id_kategori, deskripsi, gambar_url) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("sdiiss", $nama, $harga, $stok, $kategori, $deskripsi, $gambar);
+                if ($stmt->execute()) $success++;
+            }
         }
         echo $success . " items imported";
         exit;
     }
 
-    // Import PDF (converted to text)
+    // Import PDF (JSON payload from client after client-side parsing)
     if (isset($_POST['importPDF'])) {
         $data = json_decode($_POST['importPDF'], true);
         $success = 0;
-        
-        foreach ($data as $row) {
-            if (empty($row['nama']) || empty($row['harga'])) continue;
-            
-            // Tambahkan default stok jika tidak ada
-            $stok = isset($row['stok']) ? $row['stok'] : '0';
-            
-            $stmt = $conn->prepare("INSERT INTO produk(nama_produk, harga, stok) VALUES(?, ?, ?)");
-            $stmt->bind_param("sss", $row['nama'], $row['harga'], $stok);
-            
-            if ($stmt->execute()) $success++;
+        if (is_array($data)) {
+            foreach ($data as $row) {
+                $nama = $row['nama'] ?? "";
+                $harga = isset($row['harga']) ? floatval($row['harga']) : 0;
+                $stok = isset($row['stok']) ? intval($row['stok']) : 0;
+                $kategori = isset($row['kategori']) ? intval($row['kategori']) : 0;
+                $deskripsi = $row['deskripsi'] ?? "";
+                $gambar = $row['gambar'] ?? "";
+
+                if ($nama === "" || $harga <= 0) continue;
+
+                $stmt = $conn->prepare("INSERT INTO produk (nama_produk, harga, stok, id_kategori, deskripsi, gambar_url) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("sdiiss", $nama, $harga, $stok, $kategori, $deskripsi, $gambar);
+                if ($stmt->execute()) $success++;
+            }
         }
-        
         echo $success . " items imported";
         exit;
     }
@@ -48,22 +65,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Add/Edit
     $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
     $nama = $_POST['nama'] ?? "";
-    $harga = $_POST['harga'] ?? "";
+    $harga = isset($_POST['harga']) ? floatval($_POST['harga']) : 0;
+    $stok = isset($_POST['stok']) ? intval($_POST['stok']) : 0;
+    $kategori = isset($_POST['kategori']) ? intval($_POST['kategori']) : 0;
+    $deskripsi = $_POST['deskripsi'] ?? "";
+    $gambar = $_POST['gambar'] ?? "";
 
     if ($id > 0) {
-        $stmt = $conn->prepare("UPDATE produk SET nama_produk=?, harga=? WHERE id=?");
-        $stmt->bind_param("ssi", $nama, $harga, $id);
+        $stmt = $conn->prepare("UPDATE produk SET nama_produk = ?, harga = ?, stok = ?, id_kategori = ?, deskripsi = ?, gambar_url = ? WHERE id = ?");
+        // types: s (nama), d (harga), i (stok), i (kategori), s (deskripsi), s (gambar), i (id)
+        $stmt->bind_param("sdiissi", $nama, $harga, $stok, $kategori, $deskripsi, $gambar, $id);
         echo $stmt->execute() ? "success" : "Error";
     } else {
-        $stmt = $conn->prepare("INSERT INTO produk(nama_produk,harga) VALUES(?,?)");
-        $stmt->bind_param("ss", $nama, $harga);
+        $stmt = $conn->prepare("INSERT INTO produk (nama_produk, harga, stok, id_kategori, deskripsi, gambar_url) VALUES (?, ?, ?, ?, ?, ?)");
+        // types: s (nama), d (harga), i (stok), i (kategori), s (deskripsi), s (gambar)
+        $stmt->bind_param("sdiiss", $nama, $harga, $stok, $kategori, $deskripsi, $gambar);
         echo $stmt->execute() ? "success" : "Error";
     }
     exit;
 }
 
 // --- Ambil data dari database ---
-$result = $conn->query("SELECT * FROM produk ORDER BY id ASC");
+$result = $conn->query("SELECT produk.id, produk.nama_produk, produk.harga, produk.stok, produk.id_kategori, kategori.nama_kategori as kategori, produk.deskripsi, produk.gambar_url 
+    FROM produk 
+    LEFT JOIN kategori ON produk.id_kategori = kategori.id 
+    ORDER BY produk.id ASC");
+
 $produkList = [];
 if ($result) {
     while ($row = $result->fetch_assoc()) {
@@ -71,7 +98,16 @@ if ($result) {
     }
 }
 
+// Ambil semua kategori
+$kategoriList = [];
+$resKat = $conn->query("SELECT id, nama_kategori FROM kategori ORDER BY nama_kategori ASC");
+if ($resKat) {
+    while ($r = $resKat->fetch_assoc()) {
+        $kategoriList[] = $r;
+    }
+}
 ?>
+
 
 <style>
 body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
@@ -203,22 +239,26 @@ body {font-family: Arial,sans-serif; background:#f4f6f9; margin:0;padding:0;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
-// Search
+// === Search
 document.getElementById("searchInput").addEventListener("keyup", function() {
     let filter = this.value.toLowerCase();
     document.querySelectorAll("#priceTable tr").forEach((row,index)=>{
         if(index===0) return;
-        let text = row.cells[1].textContent.toLowerCase();
+        let text = row.cells[1].textContent.toLowerCase() + ' ' + row.cells[4].textContent.toLowerCase();
         row.style.display = text.includes(filter) ? "" : "none";
     });
 });
 
-// Modal
+// === Modal functions
 function openModal() {
     document.getElementById("modalTitle").innerText="Add New Item";
     document.getElementById("itemId").value="";
     document.getElementById("itemName").value="";
     document.getElementById("itemPrice").value="";
+    document.getElementById("itemStock").value="";
+    document.getElementById("itemCategory").value="";
+    document.getElementById("itemDesc").value="";
+    document.getElementById("itemImage").value="";
     document.getElementById("itemModal").style.display="flex";
 }
 function closeModal() {
@@ -227,34 +267,52 @@ function closeModal() {
 function openEditModal(btn) {
     let row = btn.closest("tr");
     document.getElementById("modalTitle").innerText="Edit Item";
-    document.getElementById("itemId").value = row.dataset.id;
-    document.getElementById("itemName").value = row.cells[1].textContent;
-    document.getElementById("itemPrice").value = row.cells[2].textContent;
+    document.getElementById("itemId").value = row.dataset.id || "";
+    document.getElementById("itemName").value = row.cells[1].textContent.trim();
+    // Harga cell shows formatted Rp style; remove non-digits
+    document.getElementById("itemPrice").value = row.cells[2].textContent.replace(/[^\d]/g,"");
+    document.getElementById("itemStock").value = row.cells[3].textContent.trim();
+    document.getElementById("itemCategory").value = row.dataset.kat || "";
+    document.getElementById("itemDesc").value = row.cells[5].textContent.trim();
+    let img = row.cells[6].querySelector("img");
+    document.getElementById("itemImage").value = img ? img.src : "";
     document.getElementById("itemModal").style.display="flex";
 }
 
-// Save item (Add/Edit)
+// === Save item (Add/Edit)
 function saveItem() {
     let id = document.getElementById("itemId").value;
-    let nama = document.getElementById("itemName").value;
+    let nama = document.getElementById("itemName").value.trim();
     let harga = document.getElementById("itemPrice").value;
+    let stok = document.getElementById("itemStock").value || 0;
+    let kategori = document.getElementById("itemCategory").value || 0;
+    let deskripsi = document.getElementById("itemDesc").value.trim();
+    let gambar = document.getElementById("itemImage").value.trim();
 
-    if(!nama || !harga) { alert("Fill all fields"); return; }
+    if(!nama || !harga) { alert("Nama dan harga wajib diisi"); return; }
 
     let formData = new FormData();
     formData.append("id", id);
     formData.append("nama", nama);
     formData.append("harga", harga);
+    formData.append("stok", stok);
+    formData.append("kategori", kategori);
+    formData.append("deskripsi", deskripsi);
+    formData.append("gambar", gambar);
 
     fetch("", {method:"POST", body:formData})
     .then(res=>res.text())
     .then(res=>{
         if(res==="success") location.reload();
-        else alert("Error saving data");
+        else alert("Error saving data: " + res);
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Network error");
     });
 }
 
-// Delete
+// === Delete
 function deleteItem(btn){
     if(!confirm("Are you sure?")) return;
     let row = btn.closest("tr");
@@ -266,269 +324,258 @@ function deleteItem(btn){
     fetch("", {method:"POST", body:formData})
     .then(res=>res.text())
     .then(res=>{
-        if(res==="deleted") row.remove();
-        else alert("Error deleting data");
+        if(res==="deleted") {
+            row.remove();
+        } else {
+            alert("Error deleting data");
+        }
     });
 }
 
-// Export to Excel
+// === Export to Excel (client-side)
 function exportToExcel() {
     let table = document.getElementById("priceTable");
     let wb = XLSX.utils.book_new();
-    
+
+    // Build 2D array from visible rows
     let data = [];
     let rows = table.querySelectorAll("tr");
-    
     rows.forEach((row, index) => {
+        if(index === 0) {
+            // header
+            let headers = Array.from(row.querySelectorAll("th")).map(h => h.textContent.trim());
+            data.push(headers.slice(0, -1)); // drop action column
+            return;
+        }
         if(row.style.display === "none") return;
-        
-        let rowData = [];
-        let cells = row.querySelectorAll("th, td");
-        
-        cells.forEach((cell, cellIndex) => {
-            if(cellIndex < cells.length - 1) {
-                rowData.push(cell.textContent);
-            }
-        });
-        
+        let cells = row.querySelectorAll("td");
+        if(cells.length === 0) return;
+        let rowData = [
+            cells[0].textContent.trim(), // No
+            cells[1].textContent.trim(), // Item
+            cells[2].textContent.trim().replace(/[^\d]/g, ""), // Price numeric
+            cells[3].textContent.trim(), // Stok
+            cells[4].textContent.trim(), // Kategori
+            cells[5].textContent.trim(), // Deskripsi
+            cells[6].querySelector("img") ? cells[6].querySelector("img").src : "" // Gambar URL
+        ];
         data.push(rowData);
     });
-    
+
     let ws = XLSX.utils.aoa_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, "Price List");
     XLSX.writeFile(wb, "price_list.xlsx");
 }
 
-// Export to PDF
+// === Export to PDF (client-side)
 function exportToPDF() {
     const { jsPDF } = window.jspdf;
     let doc = new jsPDF();
-    
-    let rows = [];
     let table = document.getElementById("priceTable");
+    let rows = [];
     let tableRows = table.querySelectorAll("tr");
-    
     tableRows.forEach((row, index) => {
+        if(index === 0) {
+            // header
+            let headers = Array.from(row.querySelectorAll("th")).map(h => h.textContent.trim());
+            rows.push(headers.slice(0, -1)); // drop action
+            return;
+        }
         if(row.style.display === "none") return;
-        
-        let rowData = [];
-        let cells = row.querySelectorAll("th, td");
-        
-        cells.forEach((cell, cellIndex) => {
-            if(cellIndex < cells.length - 1) {
-                rowData.push(cell.textContent);
-            }
-        });
-        
+        let cells = row.querySelectorAll("td");
+        let rowData = [
+            cells[0].textContent.trim(),
+            cells[1].textContent.trim(),
+            cells[2].textContent.trim(),
+            cells[3].textContent.trim(),
+            cells[4].textContent.trim(),
+            cells[5].textContent.trim(),
+            cells[6].querySelector("img") ? "[img]" : ""
+        ];
         rows.push(rowData);
     });
-    
+
+    // Use autoTable
     doc.autoTable({
         head: [rows[0]],
         body: rows.slice(1),
         theme: 'grid',
         headStyles: { fillColor: [26, 188, 156] }
     });
-    
     doc.save("price_list.pdf");
 }
 
-// Import Excel
+// === Import Excel (client-side reads file -> sends JSON to server)
 function importExcel(input) {
     let file = input.files[0];
     if (!file) return;
-    
+
     let reader = new FileReader();
     reader.onload = function(e) {
         let data = new Uint8Array(e.target.result);
         let workbook = XLSX.read(data, {type: 'array'});
         let firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        let rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
-        
-        // Skip header row
+        let rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1}); // array of arrays
+
+        // Expect header row, columns: No | Nama | Harga | Stok | Kategori | Deskripsi | Gambar
         let importData = [];
-        for(let i = 1; i < rows.length; i++) {
-            if(rows[i][1] && rows[i][2]) {
-                importData.push({
-                    nama: rows[i][1].toString(),
-                    harga: rows[i][2].toString(),
-                    stok: rows[i][3].toString()
-                });
+        for (let i = 1; i < rows.length; i++) {
+            let r = rows[i];
+            if (!r) continue;
+            // some columns may be missing; guard index access
+            let nama = (r[1] || "").toString().trim();
+            let harga = (r[2] || "").toString().replace(/[^\d.]/g, "");
+            let stok = (r[3] || "0").toString().replace(/[^\d]/g, "");
+            let kategori = (r[4] || "").toString().trim(); // if user wrote category name, not id
+            let deskripsi = (r[5] || "").toString().trim();
+            let gambar = (r[6] || "").toString().trim();
+
+            if (!nama || !harga) continue;
+
+            // If kategori is a name, try to find its id from select options
+            let katId = 0;
+            if (kategori) {
+                let opt = Array.from(document.querySelectorAll("#itemCategory option")).find(o => o.textContent.trim().toLowerCase() === kategori.toLowerCase());
+                if (opt) katId = opt.value;
+                else if (!isNaN(parseInt(kategori))) katId = parseInt(kategori);
             }
+
+            importData.push({
+                nama: nama,
+                harga: parseFloat(harga),
+                stok: parseInt(stok) || 0,
+                kategori: katId,
+                deskripsi: deskripsi,
+                gambar: gambar
+            });
         }
-        
-        if(importData.length === 0) {
+
+        if (importData.length === 0) {
             alert("No valid data found in Excel file");
+            input.value = '';
             return;
         }
-        
+
+        if (!confirm(`Ditemukan ${importData.length} item. Lanjutkan import?`)) {
+            input.value = '';
+            return;
+        }
+
         let formData = new FormData();
         formData.append("importExcel", JSON.stringify(importData));
-        
+
         fetch("", {method:"POST", body:formData})
-        .then(res=>res.text())
-        .then(res=>{
+        .then(res => res.text())
+        .then(res => {
             alert(res);
             location.reload();
-        });
+        })
+        .catch(err => { console.error(err); alert("Error uploading"); });
+
     };
     reader.readAsArrayBuffer(file);
     input.value = '';
 }
 
-// Import PDF
+// === Import PDF (client-side: parse text from PDF pages using pdf.js then build items)
 function importPDF(input) {
     let file = input.files[0];
     if (!file) return;
-    
-    // Validasi tipe file
-    if (file.type !== 'application/pdf') {
-        alert('Harap upload file PDF yang valid');
-        input.value = '';
-        return;
-    }
-    
+    if (file.type !== 'application/pdf') { alert('Harap upload file PDF yang valid'); input.value = ''; return; }
+
     let reader = new FileReader();
-    
     reader.onload = function(e) {
         let typedarray = new Uint8Array(e.target.result);
-        
-        pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+        pdfjsLib.getDocument({data: typedarray}).promise.then(function(pdf) {
             let maxPages = pdf.numPages;
-            
-            let getPageText = function(pageNum) {
-                return pdf.getPage(pageNum).then(function(page) {
+            let promises = [];
+            for (let i = 1; i <= maxPages; i++) {
+                promises.push(pdf.getPage(i).then(function(page) {
                     return page.getTextContent().then(function(textContent) {
-                        // Pertahankan struktur baris berdasarkan posisi Y
+                        // Build lines grouping by y position
+                        let items = textContent.items;
                         let lastY = null;
                         let lines = [];
                         let currentLine = '';
-                        
-                        textContent.items.forEach(item => {
-                            let currentY = item.transform[5];
-                            
-                            // Jika Y berbeda (baris baru), simpan baris sebelumnya
-                            if (lastY !== null && Math.abs(lastY - currentY) > 5) {
-                                if (currentLine.trim()) {
-                                    lines.push(currentLine.trim());
-                                }
-                                currentLine = item.str;
+                        for (let it of items) {
+                            let curY = it.transform[5];
+                            if (lastY !== null && Math.abs(lastY - curY) > 5) {
+                                if (currentLine.trim()) lines.push(currentLine.trim());
+                                currentLine = it.str;
                             } else {
-                                currentLine += (currentLine ? ' ' : '') + item.str;
+                                currentLine += (currentLine ? ' ' : '') + it.str;
                             }
-                            lastY = currentY;
-                        });
-                        
-                        // Jangan lupa baris terakhir
-                        if (currentLine.trim()) {
-                            lines.push(currentLine.trim());
+                            lastY = curY;
                         }
-                        
+                        if (currentLine.trim()) lines.push(currentLine.trim());
                         return lines.join('\n');
                     });
-                });
-            };
-            
-            let promises = [];
-            for(let i = 1; i <= maxPages; i++) {
-                promises.push(getPageText(i));
+                }));
             }
-            
             Promise.all(promises).then(function(texts) {
                 let allText = texts.join('\n');
                 let lines = allText.split('\n');
-                
                 let importData = [];
-                
-                // Parse setiap baris
-                for(let i = 0; i < lines.length; i++) {
+                for (let i = 0; i < lines.length; i++) {
                     let line = lines[i].trim();
-                    
-                    // Skip baris kosong atau header
-                    if (!line || /^(No|Item|Price|Stock|Stok|Action|Harga|Nama)/i.test(line)) {
-                        continue;
-                    }
-                    
-                    // Pattern: No NamaProduk Harga Stok
-                    // Contoh: "1 Laptop Gaming 5000000 10"
+                    if (!line) continue;
+                    // Skip headers (common words)
+                    if (/^(No|Item|Price|Stock|Stok|Action|Harga|Nama)/i.test(line)) continue;
+                    // Try parse patterns like: "1 Laptop Gaming 5000000 10"
                     let parts = line.split(/\s+/);
-                    
-                    // Minimal harus ada 4 bagian (no, nama, harga, stok)
-                    if (parts.length >= 4) {
-                        // Cek apakah bagian pertama adalah nomor
-                        if (/^\d+$/.test(parts[0])) {
-                            // Ambil harga (dari belakang ke-2) dan stok (paling belakang)
-                            let stokStr = parts[parts.length - 1];
-                            let hargaStr = parts[parts.length - 2];
-                            
-                            // Validasi harga dan stok adalah angka
-                            let harga = parseFloat(hargaStr.replace(/[^\d.]/g, ''));
-                            let stok = parseInt(stokStr.replace(/[^\d]/g, ''));
-                            
-                            // Nama adalah semua bagian di antara nomor dan harga
-                            let nama = parts.slice(1, -2).join(' ');
-                            
-                            // Validasi data lengkap dan valid
-                            if (nama && nama.length > 0 && !isNaN(harga) && harga > 0 && !isNaN(stok) && stok >= 0) {
-                                importData.push({
-                                    nama: nama,
-                                    harga: harga.toString(),
-                                    stok: stok.toString()
-                                });
-                            }
+                    if (parts.length >= 4 && /^\d+$/.test(parts[0])) {
+                        let stokStr = parts[parts.length - 1];
+                        let hargaStr = parts[parts.length - 2];
+                        let nama = parts.slice(1, -2).join(' ');
+                        let harga = parseFloat(hargaStr.replace(/[^\d.]/g, ''));
+                        let stok = parseInt(stokStr.replace(/[^\d]/g, ''));
+                        if (nama && !isNaN(harga) && harga > 0) {
+                            importData.push({ nama: nama, harga: harga, stok: isNaN(stok) ? 0 : stok, kategori: 0, deskripsi: '', gambar: '' });
+                        }
+                    } else {
+                        // Try other heuristics: maybe "Laptop Gaming - 5.000.000 - stok 10"
+                        let m = line.match(/(.+)[\-\|,]\s*([\d\.,]+)[^\d]*?(\d+)$/);
+                        if (m) {
+                            let nama = m[1].trim();
+                            let harga = parseFloat(m[2].replace(/[^\d.]/g,''));
+                            let stok = parseInt(m[3].replace(/[^\d]/g,''));
+                            if (nama && !isNaN(harga)) importData.push({ nama, harga, stok: isNaN(stok)?0:stok, kategori:0, deskripsi:'', gambar:'' });
                         }
                     }
                 }
-                
-                if(importData.length === 0) {
-                    alert("Tidak ada data valid yang ditemukan di file PDF.\n\nPastikan format PDF sesuai:\nNo | Nama Produk | Harga | Stok");
+
+                if (importData.length === 0) {
+                    alert("Tidak ada data valid yang ditemukan di file PDF.\nFormat yang didukung: No Nama Harga Stok (per baris).");
+                    input.value = '';
                     return;
                 }
-                
-                // Konfirmasi sebelum import
-                if(!confirm(`Ditemukan ${importData.length} item. Lanjutkan import?`)) {
+
+                if (!confirm(`Ditemukan ${importData.length} item. Lanjutkan import?`)) {
+                    input.value = '';
                     return;
                 }
-                
+
                 let formData = new FormData();
                 formData.append("importPDF", JSON.stringify(importData));
-                
                 fetch("", {method:"POST", body:formData})
-                .then(res => {
-                    if (!res.ok) {
-                        throw new Error('Server error: ' + res.status);
-                    }
-                    return res.text();
-                })
-                .then(res => {
-                    alert(res);
-                    location.reload();
-                })
-                .catch(err => {
-                    console.error('Error saat upload:', err);
-                    alert('Gagal mengupload data: ' + err.message);
-                });
-            })
-            .catch(err => {
-                console.error('Error parsing PDF:', err);
-                alert('Gagal membaca teks dari PDF');
+                .then(res => res.text())
+                .then(res => { alert(res); location.reload(); })
+                .catch(err => { console.error(err); alert('Gagal mengupload data: ' + err.message); });
+
+            }).catch(err => {
+                console.error('Parse pages error', err);
+                alert('Gagal memproses PDF');
             });
-        })
-        .catch(err => {
-            console.error('Error loading PDF:', err);
-            alert('Gagal memuat file PDF. Pastikan file tidak rusak.');
+        }).catch(err => {
+            console.error('Load PDF error', err);
+            alert('Gagal memuat file PDF.');
         });
     };
-    
-    reader.onerror = function() {
-        alert('Gagal membaca file');
-    };
-    
     reader.readAsArrayBuffer(file);
     input.value = '';
 }
 
-// Set PDF.js worker
+// PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 </script>
 
