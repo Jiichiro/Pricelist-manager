@@ -78,34 +78,74 @@ $result = $conn->query("SELECT id, name, username, role FROM users");
 <head>
     <meta charset="UTF-8">
     <title>Admin Page</title>
-    <style>
-        * {margin:0;padding:0;box-sizing:border-box;}
-        body {font-family:'Segoe UI', Tahoma, sans-serif;background:#f4f6f9;color:#2c3e50;}
-        .dashboard-container {display:flex;}
-        .main-content {margin-left:280px;padding:25px;width:100%;}
-        .main-content h1 {margin-bottom:20px;font-size:26px;color:#34495e;}
-        .container {max-width:900px;padding:20px;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08);}
-        h2 {margin-bottom:15px;color:#2c3e50;}
-        form {margin-bottom:30px;}
-        label {font-weight:600;display:block;margin-bottom:5px;color:#555;}
-        input, select {width:100%;padding:10px 12px;margin-bottom:15px;border:1px solid #ddd;border-radius:8px;font-size:14px;}
-        button {padding:10px 18px;border:none;background:#1abc9c;color:#fff;font-weight:600;border-radius:8px;cursor:pointer;}
-        button:hover {background:#16a085;}
-        table {width:100%;border-collapse:collapse;margin-top:15px;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05);}
-        th {background:#34495e;color:#fff;padding:12px;text-align:left;font-size:14px;}
-        td {padding:12px;border-bottom:1px solid #eee;font-size:14px;}
-        tr:nth-child(even) {background:#f9f9f9;}
-        tr:hover {background:#f1f7fd;}
-        .btn {padding:6px 12px;border:none;border-radius:6px;color:#fff;cursor:pointer;text-decoration:none;font-size:13px;}
-        .btn-edit {background:#3498db;}
-        .btn-edit:hover {background:#2980b9;}
-        .btn-delete {background:#e74c3c;}
-        .btn-delete:hover {background:#c0392b;}
-        /* Modal */
-        .modal {display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background:rgba(0,0,0,.5);}
-        .modal-content {background:#fff;margin:10% auto;padding:20px;border-radius:10px;width:400px;}
-        .close {color:#aaa;float:right;font-size:20px;font-weight:bold;cursor:pointer;}
-    </style>
+ <style>
+/* ================= Global Styles ================= */
+* {margin:0; padding:0; box-sizing:border-box;}
+body {font-family:'Segoe UI', Tahoma, sans-serif; background:#f4f6f9; color:#2c3e50;}
+a {text-decoration:none;}
+
+/* ================= Dashboard Layout ================= */
+.dashboard-container {display:flex;}
+.main-content {margin-left:280px; padding:25px; width:100%; transition: margin 0.3s;}
+/* Tambahkan jarak bawah header / hamburger menu */
+.main-content h1 {
+    margin-bottom: 20px;
+    font-size: 28px;
+    color: #34495e;
+    margin-top: 70px; /* ini yang bikin turun, sesuaikan tinggi hamburger */
+}
+
+.main-content h1 {margin-bottom:20px; font-size:28px; color:#34495e;}
+.container {max-width:950px; padding:25px; background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08);}
+h2 {margin-bottom:20px; color:#2c3e50;}
+form {margin-bottom:30px;}
+label {font-weight:600; display:block; margin-bottom:5px; color:#555;}
+input, select {width:100%; padding:12px 14px; margin-bottom:18px; border:1px solid #ddd; border-radius:10px; font-size:15px;}
+button {padding:12px 20px; border:none; background:#1abc9c; color:#fff; font-weight:600; border-radius:8px; cursor:pointer; font-size:15px;}
+button:hover {background:#16a085;}
+table {width:100%; border-collapse:collapse; margin-top:20px; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.05);}
+th {background:#34495e; color:#fff; padding:14px; text-align:left; font-size:15px;}
+td {padding:14px; border-bottom:1px solid #eee; font-size:14px;}
+tr:nth-child(even) {background:#f9f9f9;}
+tr:hover {background:#f1f7fd;}
+.btn {padding:7px 14px; border:none; border-radius:6px; color:#fff; cursor:pointer; text-decoration:none; font-size:13px;}
+.btn-edit {background:#3498db;}
+.btn-edit:hover {background:#2980b9;}
+.btn-delete {background:#e74c3c;}
+.btn-delete:hover {background:#c0392b;}
+
+/* Modal */
+.modal {display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,.5);}
+.modal-content {background:#fff; margin:8% auto; padding:25px; border-radius:12px; width:90%; max-width:450px;}
+.close {color:#aaa; float:right; font-size:22px; font-weight:bold; cursor:pointer;}
+
+/* ================= Responsive ================= */
+
+/* Mobile: 480px */
+@media screen and (max-width:480px) {
+    .main-content {margin-left:0; padding:15px;}
+    h1 {font-size:24px;}
+    label, input, select, button {font-size:14px;}
+    table th, table td {font-size:12px; padding:10px;}
+}
+
+/* Tablet: 768px */
+@media screen and (max-width:768px) {
+    .main-content {margin-left:0; padding:20px;}
+    h1 {font-size:26px;}
+    input, select, button {padding:10px 12px; font-size:14px;}
+    table th, table td {font-size:13px; padding:12px;}
+}
+
+/* Laptop: 1164px */
+@media screen and (max-width:1164px) {
+    .main-content {margin-left:0; padding:22px;}
+    h1 {font-size:27px;}
+    input, select, button {padding:11px 13px; font-size:15px;}
+}
+
+/* Desktop: >1164px tetap default */
+</style>
 </head>
 <body>
 <div class="dashboard-container">
